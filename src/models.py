@@ -54,7 +54,6 @@ class Lenet5(nn.Module):
         return x
     
 class tiny(nn.Module):
-    # Implemented based on https://github.com/ChawDoe/LeNet5-MNIST-PyTorch
     def __init__(self, seed=None, num_classes=10):
         if seed is not None:
             torch.manual_seed(seed)
@@ -94,7 +93,7 @@ class small(nn.Module):
 
 class small2(nn.Module):
     # Implemented based on https://github.com/ChawDoe/LeNet5-MNIST-PyTorch
-    def __init__(self, seed=None, num_classes=10):
+    def __init__(self, seed=None, num_classes=10, dropout=0.1):
         super(small2, self).__init__()
         if seed is not None:
             torch.manual_seed(seed)
@@ -107,6 +106,7 @@ class small2(nn.Module):
         self.lin2 = nn.Linear(num_hideen, num_classes, bias=False) # paramters = 2*12*10 = 240
         self.nonlin = nn.ReLU()
         self.verbose = False
+        self.dropout = nn.Dropout(dropout)
     def forward(self, x):
         x,_ = self.pool(self.nonlin(self.conv1(x)))
         x,_ = self.pool(self.nonlin(self.conv2(x)))
@@ -179,6 +179,41 @@ class MyNet_unfolded(nn.Module):
         x = self.nonlin(x)
         x = self.dropout(x)
         x = self.linear3(x)
+        return x
+
+
+class MyNet_small(nn.Module):
+    def __init__(self, seed=None, dropout=0.5, num_classes=10):
+        super(MyNet_small, self).__init__()
+        self.dropout = dropout
+        if seed is not None:
+            torch.manual_seed(seed)
+        self.conv_block = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            #nn.BatchNorm2d(32),
+            nn.Dropout(p=dropout),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            #nn.BatchNorm2d(64),
+            nn.Dropout(p=dropout),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        
+        self.linear_block = nn.Sequential(
+            nn.Linear(64*7*7, 64),
+            nn.ReLU(),
+            #nn.BatchNorm1d(64),
+            nn.Dropout(p=dropout),
+            nn.Linear(64, num_classes)
+        )
+
+    def forward(self, x):
+        x = self.conv_block(x)
+        x = x.view(x.size(0), -1)
+        x = self.linear_block(x)
         return x
 
 
@@ -321,8 +356,10 @@ class Curve(nn.Module):
                                                                           self.model_theta.named_modules(), self.sampled_model.named_modules()):
             if verbose:
                 print(f"\nModule: {module_start[0]}")
-            for param_start, param_end, param_theta, param_sampled in zip(module_start[1].named_parameters(recurse=False), module_end[1].named_parameters(recurse=False), 
-                                                           module_theta[1].named_parameters(recurse=False), module_sampled[1].named_parameters(recurse=False)):
+            for param_start, param_end, param_theta, param_sampled in zip(module_start[1].named_parameters(recurse=False), 
+                                                                          module_end[1].named_parameters(recurse=False), 
+                                                                          module_theta[1].named_parameters(recurse=False), 
+                                                                          module_sampled[1].named_parameters(recurse=False)):
                 if verbose:
                     print(f"Parameter: {param_sampled[0]}")
                 param_dicts.append({"module_name": module_sampled[0], 

@@ -5,8 +5,8 @@ from torchvision.datasets import mnist
 from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
 from torchvision.transforms import ToTensor
-from models import MyNet, Lenet5, tiny, Curve, CurveParameterization
-from train import train, curvetrain
+from models import MyNet, Lenet5, tiny, Curve, CurveParameterization, MyNet_small
+from train import train
 from torchviz import make_dot
 import numpy as np
 import os
@@ -14,7 +14,7 @@ import logging
 import sys
 from datetime import datetime
 from torch.utils.data import Subset
-from code.curve_plots import plot_Curve_losslandscape, affine_subspace, bezier_plot
+from curve_plots import plot_Curve_losslandscape, affine_subspace, bezier_plot
 import torchmetrics
 from curve_eval import curve_eval
 import argparse
@@ -40,8 +40,11 @@ def curve_fitting(**kargs):
 
     createnewfolder = kargs.get("createnewfolder", False)
 
-    if model_name == "MyNet":
+    if model_name == ["MyNet"]:
         MODEL = MyNet
+        model_kargs = {"dropout": kargs.get("model_dropout", 0.5)}
+    elif model_name == "MyNet_small":
+        MODEL = MyNet_small
         model_kargs = {"dropout": kargs.get("model_dropout", 0.5)}
     elif model_name == "Lenet5":
         MODEL = Lenet5
@@ -156,7 +159,7 @@ def curve_fitting(**kargs):
         else: 
             logger.info(f"Wrong model_scheduler: {model_scheduler}")
             AssertionError(f"Wrong model_scheduler: {model_scheduler}")
-
+ 
         model_start, all_train_losses, lrs, epoch_train_losses, test_losses = train(model_start, 
                                                 train_loader=train_loader, 
                                                 test_loader=test_loader, 
@@ -164,8 +167,10 @@ def curve_fitting(**kargs):
                                                 scheduler=scheduler_start, 
                                                 epochs=model_epochs, loss_fn=loss_fn, device=device, 
                                                 logger_info=logger.info,
-                                                plot=True, plotpath=f"{base_directory}/figures",
-                                                plotname=f"model_start_{MODEL.__name__}_{dataset}")
+                                                plot=True, plotpath=f"{base_directory}/start_model/figures",
+                                                #plotpath=f"model_start_{MODEL.__name__}_{dataset}",
+                                                verbose=True
+                                                )
 
         logger.info("Begin training of model_end")
         model_end = MODEL(**model_kargs)
@@ -191,15 +196,17 @@ def curve_fitting(**kargs):
                                                 optimizer=optimizer_end, 
                                                 scheduler=scheduler_end, 
                                                 epochs=model_epochs, loss_fn=loss_fn, device=device, logger_info=logger.info,
-                                                plot=True, plotpath=f"{base_directory}/figures", 
-                                                plotname=f"model_end_{MODEL.__name__}_{dataset}")
+                                                plot=True, plotpath=f"{base_directory}/end_model/figures", 
+                                                #plotname=f"model_end_{MODEL.__name__}_{dataset}"
+                                                verbose=True
+                                                )
 
         torch.save(model_start, f"{base_directory}/models/model_start_{MODEL.__name__}_{dataset}.pth")
         torch.save(model_end, f"{base_directory}/models/model_end_{MODEL.__name__}_{dataset}.pth")
         logger.info("finished training of models")
     else:
-        model_start = torch.load(f"{base_directory}/models/model_start_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device))
-        model_end = torch.load(f"{base_directory}/models/model_end_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device))
+        model_start = torch.load(f"{base_directory}/models/model_start_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device), weights_only=False)
+        model_end = torch.load(f"{base_directory}/models/model_end_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device), weights_only=False)
 
     def curve_fn(param_start, param_end, param_theta, t):
         return param_start * (1-t)**2 + param_end * t**2 + param_theta * 2*t*(1-t)
@@ -231,21 +238,21 @@ def curve_fitting(**kargs):
                                                                             device=device, 
                                                                             logger_info=logger.info,
                                                                             plot=True, 
-                                                                            plotpath=f"{base_directory}/figures", 
-                                                                            plotname=f"curvefitting_{MODEL.__name__}_{dataset}", 
+                                                                            plotpath=f"{base_directory}/curve_model/figures", 
+                                                                            #plotname=f"curvefitting_{MODEL.__name__}_{dataset}", 
                                                                             modeltype="curve", 
-                                                                            verbose=False)
+                                                                            verbose=True)
         torch.save(curve.model_theta, f"{base_directory}/models/curve.model_theta_{MODEL.__name__}_{dataset}.pth")
         logger.info("finished training of curve")
     else:
         curve = Curve(model_start=model_start, model_end=model_end, curve_fn=curve_fn, device=device)
-        curve.model_theta = torch.load(f"{base_directory}/models/curve.model_theta_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device))
+        curve.model_theta = torch.load(f"{base_directory}/models/curve.model_theta_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device), weights_only=False)
         
     if plot_mesh: 
-        plot_Curve_losslandscape(curve, device, f"{base_directory}/figures", test_loader, N_points=meshpoints, loss_fn=loss_fn, recalc_mesh=recalc_mesh, logger_info=logger.info)
+        plot_Curve_losslandscape(curve, device, f"{base_directory}/figures", test_loader, N_points=meshpoints, loss_fn=loss_fn, recalc_mesh=recalc_mesh, logger_info=logger.info, N_bezierpoints=bezierpoints)
 
     if plot_bezier:
-        bezier_plot(curve, device, folder=f"{base_directory}/figures", test_loader=test_loader, plottype="linear", N_bezierpoints = bezierpoints, loss_fn=loss_fn, logger_info=logger.info)
+        bezier_plot(curve, device, folder=f"{base_directory}/figures", test_loader=test_loader, plottype="linear", N_bezierpoints = bezierpoints, loss_fn=loss_fn, logger_info=logger.info, plot_linear=True)
 
     if eval_curve:
         curve_eval(curve, samplesize=curve_eval_samplesize, test_loader=test_loader, device=device, logger_info=logger.info)
@@ -253,35 +260,35 @@ def curve_fitting(**kargs):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Mode connectivity')
     parser.add_argument('--basefolder', type=str, help='Folder to store results')
-    parser.add_argument('--createnewfolder', default=True, help='Create new folder if basefolder already exists', type=eval, choices=[True, False])
+    parser.add_argument('--createnewfolder', default=False, help='Create new folder if basefolder already exists', type=eval, choices=[True, False])
     parser.add_argument('--datafolder', type=str, help='Folder to store data')
-    parser.add_argument('--dataset', default = "MNIST", type=str, help='Dataset to use', choices=["MNIST", "FashionMNIST"])
+    parser.add_argument('--dataset', default = "FashionMNIST", type=str, help='Dataset to use', choices=["MNIST", "FashionMNIST"])
     parser.add_argument('--batchsize', default = 256, type=int, help='Batch size')
     parser.add_argument('--seed', type=int, help='Seed')
-    parser.add_argument('--model', default = "MyNet",  type=str, help='Model to use (MyNet/Lenet5/tiny)', choices=["MyNet", "Lenet5", "tiny"])
-    parser.add_argument('--retrain', default = True, help='Retrain models if already present in folder', type=eval, choices=[True, False])
+    parser.add_argument('--model', default = "MyNet_small",  type=str, help='Model to use (MyNet/Lenet5/tiny)', choices=["MyNet", "Lenet5", "tiny", "MyNet_small"])
+    parser.add_argument('--retrain', default = False, help='Retrain models if already present in folder', type=eval, choices=[True, False])
     parser.add_argument('--model_lr_start', default = 1e-2, type=float, help='Learning rate start')
-    parser.add_argument('--model_lr_end', default = 1e-3, type=float, help='Learning rate end')
-    parser.add_argument('--model_epochs', default = 5, type=int, help='Number of epochs')
+    parser.add_argument('--model_lr_end', default = 2e-3, type=float, help='Learning rate end')
+    parser.add_argument('--model_epochs', default = 20, type=int, help='Number of epochs')
     parser.add_argument('--model_dropout', default = 0.5, type=float, help='Dropout')
     parser.add_argument('--model_optimizer', default = "Adam", type=str, help='Optimizer to use for model training', choices=["Adam", "SGD"])
     parser.add_argument('--model_scheduler', default = "linear", type=str, help='Optimizer to use for model training', choices=["linear", "exponential", "none"])
     
-    parser.add_argument('--retrain_curve', default = True, help='Retrain curve if already present in folder', type=eval, choices=[True, False])
+    parser.add_argument('--retrain_curve', default = False, help='Retrain curve if already present in folder', type=eval, choices=[True, False])
     parser.add_argument('--curve_lr_start', default = 1e-1, type=float, help='Learning rate start')
     parser.add_argument('--curve_lr_end', default = 1e-5, type=float, help='Learning rate end')
-    parser.add_argument('--curve_epochs', default = 5, type=int, help='Number of epochs')
+    parser.add_argument('--curve_epochs', default = 20, type=int, help='Number of epochs')
     parser.add_argument('--curve_optimizer', default = "SGD", type=str, help='Optimizer to use for curve training', choices=["Adam", "SGD"])
     parser.add_argument('--curve_scheduler', default = "linear", type=str, help='Optimizer to use for curve training', choices=["linear", "exponential", "none"])
 
-    parser.add_argument('--plot_mesh', default = True, help='Plot loss landscape', type=eval, choices=[True, False])
-    parser.add_argument('--recalc_mesh', default = True, help='Recalculate loss landscape if already present in folder', type=eval, choices=[True, False])
-    parser.add_argument('--meshpoints', default = 20, type=int, help='Number of mesh points')
+    parser.add_argument('--plot_mesh', default = False, help='Plot loss landscape', type=eval, choices=[True, False])
+    parser.add_argument('--recalc_mesh', default = False, help='Recalculate loss landscape if already present in folder', type=eval, choices=[True, False])
+    parser.add_argument('--meshpoints', default = 10, type=int, help='Number of mesh points')
 
     parser.add_argument('--plot_bezier', default = True, help='Plot bezier curve', type=eval, choices=[True, False])
     parser.add_argument('--bezierpoints', default = 20, type=int, help='Number of bezier points')
 
-    parser.add_argument('--eval_curve', default = True, help='Evaluate curve', type=eval, choices=[True, False])
+    parser.add_argument('--eval_curve', default = False, help='Evaluate curve', type=eval, choices=[True, False])
     parser.add_argument('--curve_eval_samplesize', default = 20, type=int, help='Number of samples for evaluation')
     parser.add_argument('--useGPU', default = True, help='Use GPU if available (cpu/cuda/mps)', type=eval, choices=[True, False])
     parser.add_argument('--logging', default = True, help='log to file', type=eval, choices=[True, False])
