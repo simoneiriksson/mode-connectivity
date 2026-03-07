@@ -1,12 +1,13 @@
 import torchmetrics
-
 import torch
 import torch.nn as nn
 from models import Curve, CurveParameterization
+from curve_eval import curve_eval
 from matplotlib import pyplot as plt
 from matplotlib import cm, ticker
 from matplotlib.colors import LogNorm
-
+from curve_eval import curve_eval
+    
 def affine_subspace(curve: Curve) -> tuple:
     # Create affine mapping that spans the subspace
     b = torch.nn.utils.parameters_to_vector(curve.model_theta.parameters())
@@ -97,15 +98,46 @@ def plot_Curve_losslandscape(curve, device, folder, test_loader, N_points=30, lo
     ax.scatter(x1[0],x1[1], label="model1")
     ax.scatter(0,0 , label="theta")
     ax.legend()
-    fig.savefig(f"{folder}/losslandscape_{model_name}_{dataset_name}.png")
-    #plt.show()
-    plt.close()
     logger_info("finished loss landscape plot")
     logger_info("")
+    return fig, ax
+
+def bezier_plot(curve, device, test_loader, plottype="semilog", N_bezierpoints = 20, logger_info=print, 
+                verbose=False, plot_linear=True, metrics_dict={}, 
+                eval_results=None       
+                ):
+    if eval_results is None:
+        ts = torch.linspace(0, 1, N_bezierpoints, device=device)
+        curve_perpoint_measurement_dict, ts, curve_ensemble_measurement_dict = curve_eval(curve,  
+                                                                    test_loader=test_loader, device=device, 
+                                                                    logger_info=logger_info, eval_straight_line=False, 
+                                                                    verbose=verbose, metrics_dict=metrics_dict,
+                                                                    ts=ts)
+        if plot_linear:
+            line_perpoint_measurement_dict, _, line_ensemble_measurement_dict = curve_eval(curve,  
+                                                                    test_loader=test_loader, device=device, 
+                                                                    logger_info=logger_info, eval_straight_line=True, 
+                                                                    verbose=verbose, metrics_dict=metrics_dict,
+                                                                    ts=ts)
+    else:
+        curve_perpoint_measurement_dict = eval_results["curve_perpoint_score_dict"]
+        line_perpoint_measurement_dict = eval_results.get("line_perpoint_score_dict")
+        ts = eval_results["ts"]
+    fig, axs = plt.subplots(1, len(metrics_dict), figsize=(5*len(metrics_dict), 4))
+    for i, (metric_name, measurement_bezier) in enumerate(curve_perpoint_measurement_dict.items()):
+        if plottype == "semilog":
+            axs[i].semilogy(ts.cpu(), measurement_bezier.cpu(), label="bezier")
+            if plot_linear: axs[i].semilogy(ts.cpu(), line_perpoint_measurement_dict[metric_name].cpu(), label="linear")
+        elif plottype == "linear":
+            axs[i].plot(ts.cpu(), measurement_bezier.cpu(), label="bezier")
+            if plot_linear: axs[i].plot(ts.cpu(), line_perpoint_measurement_dict[metric_name].cpu(), label="linear")
+        axs[i].legend()
+        axs[i].set_title(f"{metric_name}")
+    return fig, axs, eval_results
 
 
-def bezier_plot(curve, device, folder, test_loader, plottype="semilog", N_bezierpoints = 20, loss_fn=None, logger_info=None, verbose=False, plot_linear=True):
-    if logger_info == None: logger_info=print
+
+def bezier_plot_bck(curve, device, folder, test_loader, plottype="semilog", N_bezierpoints = 20, loss_fn=None, logger_info=print, verbose=False, plot_linear=True):
     logger_info("")
     logger_info("begin bezierplot")
     dataset_name = type(test_loader.dataset.dataset).__name__
@@ -117,7 +149,7 @@ def bezier_plot(curve, device, folder, test_loader, plottype="semilog", N_bezier
     #theta = torch.tensor([0., 0.])
     
     # the t's are the time steps we walk along the curve
-    ts = torch.linspace(0, 1, N_bezierpoints)
+    ts = torch.linspace(0, 1, N_bezierpoints, device=device)
     # this is the points along the curve
     #inputs = curve.curve_fn(x1.unsqueeze(1), x2.unsqueeze(1), theta.unsqueeze(1), ts)
     #A, b = affine_subspace(curve)
@@ -163,16 +195,15 @@ def bezier_plot(curve, device, folder, test_loader, plottype="semilog", N_bezier
                     true_y[i * test_loader.batch_size: i * test_loader.batch_size + this_batch_size] = test_y
 
     # initialize a bunch of metrics:
-    loss_fn_loss = lambda pred, y: loss_fn(pred, y).item()
     CE_loss = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean', label_smoothing=0.0)
-    NegLL_loss = torch.nn.NLLLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
+    NegLL_loss = lambda pred, y: -torch.nn.functional.nll_loss(torch.nn.functional.log_softmax(pred, dim=1), y).item()
     #NegLL_loss = torchmetrics.classification.MulticlassNLLLoss(num_classes=10)
     ECE_metric = torchmetrics.classification.MulticlassCalibrationError(num_classes=10, n_bins=15)
     acc_metric = torchmetrics.classification.Accuracy(task="multiclass", num_classes=10)
     auroc_metric = torchmetrics.classification.AUROC(task="multiclass", num_classes=10)
 
     # loop over metrics and create plots.
-    for metric, metric_name in zip([loss_fn_loss, CE_loss, NegLL_loss, ECE_metric, acc_metric, auroc_metric], 
+    for metric, metric_name in zip([CE_loss, NegLL_loss, ECE_metric, acc_metric, auroc_metric], 
                         ["loss_fn_loss", "Cross Entropy", "LogLikelihood", "Expected Calibration Error", "Accuracy", "AUROC"]):
         measurement_bezier = []
         measurement_line = []
@@ -188,8 +219,8 @@ def bezier_plot(curve, device, folder, test_loader, plottype="semilog", N_bezier
             plt.semilogy(ts, measurement_bezier, label="bezier")
             if plot_linear: plt.semilogy(ts, measurement_line, label="linear")
         elif plottype == "linear":
-            plt.plot(ts, measurement_bezier, label="bezier")
-            if plot_linear: plt.plot(ts, measurement_line, label="linear")
+            plt.plot(ts.cpu(), measurement_bezier, label="bezier")
+            if plot_linear: plt.plot(ts.cpu(), measurement_line, label="linear")
         plt.legend()
         plt.title(f"{metric_name} along curve")
         #plt.show()
@@ -202,4 +233,5 @@ def bezier_plot(curve, device, folder, test_loader, plottype="semilog", N_bezier
     #plt.show()
     plt.close()
     logger_info("finished bezierplot")
+
 

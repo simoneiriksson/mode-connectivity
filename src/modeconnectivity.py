@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
-import torchmetrics.classification
-from torchvision.datasets import mnist
+import torchmetrics
+#import torchmetrics.classification
+#import torchmetrics.functional.classification 
+from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
-from torchvision.transforms import ToTensor
-from models import MyNet, Lenet5, tiny, Curve, CurveParameterization, MyNet_small
+from models import MyNet, Lenet5, tiny, Curve, CurveParameterization, MyNet_small, CIFAR10ConvNet
 from train import train
 from torchviz import make_dot
 import numpy as np
@@ -40,7 +41,7 @@ def curve_fitting(**kargs):
 
     createnewfolder = kargs.get("createnewfolder", False)
 
-    if model_name == ["MyNet"]:
+    if model_name == "MyNet":
         MODEL = MyNet
         model_kargs = {"dropout": kargs.get("model_dropout", 0.5)}
     elif model_name == "MyNet_small":
@@ -52,8 +53,14 @@ def curve_fitting(**kargs):
     elif model_name == "tiny":
         MODEL = tiny
         model_kargs = {}
+    elif model_name == "CIFAR10ConvNet":
+        MODEL = CIFAR10ConvNet
+        model_kargs = {"dropout": kargs.get("model_dropout", 0.3)}
     else:
         raise ValueError("Model not recognized")
+
+    if dataset == "CIFAR10" and model_name != "CIFAR10ConvNet":
+        raise ValueError("For CIFAR10, use model='CIFAR10ConvNet'")
     
     retrain = kargs.get("retrain", True)
     model_lr_start = torch.tensor(kargs.get("model_lr_start", 1e-2))
@@ -79,6 +86,7 @@ def curve_fitting(**kargs):
 
     eval_curve = kargs.get("eval_curve", True)
     curve_eval_samplesize = kargs.get("curve_eval_samplesize", 20)
+
 
     useGPU = kargs.get("useGPU", True)
     logging_tofile = kargs.get("logging", True)
@@ -118,11 +126,19 @@ def curve_fitting(**kargs):
     logger.info(f"{plot_mesh=}")
 
     if dataset == "MNIST":
-        train_dataset = mnist.MNIST(root=f'{datafolder}/train', train=True, download=True, transform=ToTensor())
-        test_dataset = mnist.MNIST(root=f'{datafolder}/test', train=False, download=True, transform=ToTensor())
+        train_dataset = datasets.MNIST(root=f'{datafolder}/train', train=True, download=True, transform=transforms.ToTensor())
+        test_dataset = datasets.MNIST(root=f'{datafolder}/test', train=False, download=True, transform=transforms.ToTensor())
     elif dataset == "FashionMNIST":
-        train_dataset = mnist.FashionMNIST(root=f'{datafolder}/train', train=True, download=True, transform=ToTensor())
-        test_dataset = mnist.FashionMNIST(root=f'{datafolder}/test', train=False, download=True, transform=ToTensor())
+        train_dataset = datasets.FashionMNIST(root=f'{datafolder}/train', train=True, download=True, transform=transforms.ToTensor())
+        test_dataset = datasets.FashionMNIST(root=f'{datafolder}/test', train=False, download=True, transform=transforms.ToTensor())
+    elif dataset == "CIFAR10":
+        transform = transforms.Compose([
+            transforms.ToTensor()
+        ])
+        train_dataset = datasets.CIFAR10(root=f'{datafolder}/train', train=True, download=True, transform=transform)
+        test_dataset = datasets.CIFAR10(root=f'{datafolder}/test', train=False, download=True, transform=transform)
+    else:
+        raise ValueError(f"Dataset not recognized: {dataset}")
 
     subset_test = Subset(test_dataset, indices=range(len(test_dataset) // 1))
     subset_train = Subset(train_dataset, indices=range(len(train_dataset) // 1))
@@ -156,11 +172,23 @@ def curve_fitting(**kargs):
             scheduler_start = torch.optim.lr_scheduler.ExponentialLR(optimizer_start, gamma=gamma)
         elif model_scheduler == "linear":
             scheduler_start = torch.optim.lr_scheduler.LinearLR(optimizer_start, start_factor=1, end_factor=model_lr_end/model_lr_start, total_iters=total_iter)
+        elif model_scheduler == "diy":
+            from scheduler import make_scheduler
+            scheduler_start = make_scheduler(optimizer_start, 
+                                             train_num_steps=total_iter, 
+                                             lr_start_warmup=model_lr_start.clone(), 
+                                             lr=model_lr_end.clone(), 
+                                             lr_warmup_steps=5*train_loader.__len__(), 
+                                             lr_finetune_halftime=total_iter // (5*3), 
+                                             lr_finetune_steps=total_iter // 3
+            )
+
+
         else: 
             logger.info(f"Wrong model_scheduler: {model_scheduler}")
             AssertionError(f"Wrong model_scheduler: {model_scheduler}")
  
-        model_start, all_train_losses, lrs, epoch_train_losses, test_losses = train(model_start, 
+        model_start, all_train_losses, lrs, epoch_train_losses, test_losses, epoch_train_accuracy, plots = train(model_start, 
                                                 train_loader=train_loader, 
                                                 test_loader=test_loader, 
                                                 optimizer=optimizer_start, 
@@ -186,11 +214,21 @@ def curve_fitting(**kargs):
             scheduler_end = torch.optim.lr_scheduler.ExponentialLR(optimizer_end, gamma=gamma)
         elif model_scheduler == "linear":
             scheduler_end = torch.optim.lr_scheduler.LinearLR(optimizer_end, start_factor=1, end_factor=model_lr_end/model_lr_start, total_iters=total_iter)
+        elif model_scheduler == "diy":
+            from scheduler import make_scheduler
+            scheduler_end = make_scheduler(optimizer_end, 
+                                             train_num_steps=total_iter, 
+                                             lr_start_warmup=model_lr_start.clone(), 
+                                             lr=model_lr_end.clone(), 
+                                             lr_warmup_steps=5*train_loader.__len__(), 
+                                             lr_finetune_halftime=total_iter // (5*3), 
+                                             lr_finetune_steps=total_iter // 3
+            )
         else: 
             logger.info(f"Wrong model_scheduler: {model_scheduler}")
             AssertionError(f"Wrong model_scheduler: {model_scheduler}")
 
-        model_end, all_train_losses, lrs, epoch_train_losses, test_losses = train(model_end, 
+        model_end, all_train_losses, lrs, epoch_train_losses, test_losses, epoch_train_accuracy, plots = train(model_end, 
                                                 train_loader=train_loader, 
                                                 test_loader=test_loader, 
                                                 optimizer=optimizer_end, 
@@ -228,7 +266,19 @@ def curve_fitting(**kargs):
             scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, 
                                                           end_factor=curve_lr_end/curve_lr_start, 
                                                           total_iters=total_iter)
-        curve, all_train_losses, lrs, epoch_train_losses, test_losses = train(curve, 
+        elif model_scheduler == "diy":
+            from scheduler import make_scheduler
+            scheduler = make_scheduler(optimizer, 
+                                             train_num_steps=total_iter, 
+                                             lr_start_warmup=curve_lr_start.clone(), 
+                                             lr=curve_lr_end.clone(), 
+                                             lr_warmup_steps=5*train_loader.__len__(), 
+                                             lr_finetune_halftime=total_iter // (5*3), 
+                                             lr_finetune_steps=total_iter // 3
+            )
+                
+
+        curve, all_train_losses, lrs, epoch_train_losses, test_losses, epoch_train_accuracy, plots = train(curve, 
                                                                             train_loader=train_loader, 
                                                                             test_loader=test_loader, 
                                                                             optimizer=optimizer, 
@@ -248,45 +298,62 @@ def curve_fitting(**kargs):
         curve = Curve(model_start=model_start, model_end=model_end, curve_fn=curve_fn, device=device)
         curve.model_theta = torch.load(f"{base_directory}/models/curve.model_theta_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device), weights_only=False)
         
+    metrics_dict = {
+        #"loss_fn": lambda pred_probs, target: loss_fn(pred_probs.log(), target),
+        "Cross Entropy": lambda pred_probs, target: torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean', label_smoothing=0.0)(pred_probs.log(), target),
+        #"NegLogLikelihood": lambda pred_probs, target: torch.nn.NLLLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean')(pred_probs.log(), target),
+        #"Expected Calibration Error": lambda pred_probs, target: torchmetrics.functional.classification.multiclass_calibration_error(preds=pred_probs, target=target, num_classes=10, n_bins=15),
+        
+        "Expected Calibration Error": torchmetrics.classification.MulticlassCalibrationError(num_classes=10, n_bins=25).to(device),
+        "Accuracy": lambda pred_probs, target: torchmetrics.functional.classification.accuracy(preds=pred_probs, target=target, task="multiclass", num_classes=10).to(device),
+        "AUROC": lambda pred_probs, target: torchmetrics.functional.classification.auroc(preds=pred_probs, target=target, task="multiclass", num_classes=10).to(device)
+    }
+
     if plot_mesh: 
-        plot_Curve_losslandscape(curve, device, f"{base_directory}/figures", test_loader, N_points=meshpoints, loss_fn=loss_fn, recalc_mesh=recalc_mesh, logger_info=logger.info, N_bezierpoints=bezierpoints)
+        fig, ax = plot_Curve_losslandscape(curve, device, f"{base_directory}/figures", test_loader, N_points=meshpoints, loss_fn=loss_fn, recalc_mesh=recalc_mesh, logger_info=logger.info, N_bezierpoints=bezierpoints)
+        fig.savefig(f"{base_directory}/figures/loss_landscape.png")
+        plt.close()
 
     if plot_bezier:
-        bezier_plot(curve, device, folder=f"{base_directory}/figures", test_loader=test_loader, plottype="linear", N_bezierpoints = bezierpoints, loss_fn=loss_fn, logger_info=logger.info, plot_linear=True)
+        fig, axs, eval_results = bezier_plot(curve, device, test_loader=test_loader, plottype="linear", 
+                               N_bezierpoints = bezierpoints,
+                               logger_info=logger.info, plot_linear=False, metrics_dict=metrics_dict)
+        fig.savefig(f"{base_directory}/figures/metric_along_curve_linear.png")
+        plt.close()
 
-    if eval_curve:
-        curve_eval(curve, samplesize=curve_eval_samplesize, test_loader=test_loader, device=device, logger_info=logger.info)
+    #if eval_curve:
+    #    curve_eval(curve, samplesize=curve_eval_samplesize, test_loader=test_loader, device=device, logger_info=logger.info, metrics_dict=metrics_dict)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Mode connectivity')
     parser.add_argument('--basefolder', type=str, help='Folder to store results')
     parser.add_argument('--createnewfolder', default=False, help='Create new folder if basefolder already exists', type=eval, choices=[True, False])
     parser.add_argument('--datafolder', type=str, help='Folder to store data')
-    parser.add_argument('--dataset', default = "FashionMNIST", type=str, help='Dataset to use', choices=["MNIST", "FashionMNIST"])
+    parser.add_argument('--dataset', default = "CIFAR10", type=str, help='Dataset to use', choices=["MNIST", "FashionMNIST", "CIFAR10"])
     parser.add_argument('--batchsize', default = 256, type=int, help='Batch size')
     parser.add_argument('--seed', type=int, help='Seed')
-    parser.add_argument('--model', default = "MyNet_small",  type=str, help='Model to use (MyNet/Lenet5/tiny)', choices=["MyNet", "Lenet5", "tiny", "MyNet_small"])
+    parser.add_argument('--model', default = "CIFAR10ConvNet",  type=str, help='Model to use (MyNet/Lenet5/tiny/MyNet_small/CIFAR10ConvNet)', choices=["MyNet", "Lenet5", "tiny", "MyNet_small", "CIFAR10ConvNet"])
     parser.add_argument('--retrain', default = False, help='Retrain models if already present in folder', type=eval, choices=[True, False])
-    parser.add_argument('--model_lr_start', default = 1e-2, type=float, help='Learning rate start')
+    parser.add_argument('--model_lr_start', default = 1e-4, type=float, help='Learning rate start')
     parser.add_argument('--model_lr_end', default = 2e-3, type=float, help='Learning rate end')
-    parser.add_argument('--model_epochs', default = 20, type=int, help='Number of epochs')
+    parser.add_argument('--model_epochs', default = 100, type=int, help='Number of epochs')
     parser.add_argument('--model_dropout', default = 0.5, type=float, help='Dropout')
     parser.add_argument('--model_optimizer', default = "Adam", type=str, help='Optimizer to use for model training', choices=["Adam", "SGD"])
-    parser.add_argument('--model_scheduler', default = "linear", type=str, help='Optimizer to use for model training', choices=["linear", "exponential", "none"])
+    parser.add_argument('--model_scheduler', default = "diy", type=str, help='Optimizer to use for model training', choices=["linear", "exponential", "diy", "none"])
     
     parser.add_argument('--retrain_curve', default = False, help='Retrain curve if already present in folder', type=eval, choices=[True, False])
-    parser.add_argument('--curve_lr_start', default = 1e-1, type=float, help='Learning rate start')
-    parser.add_argument('--curve_lr_end', default = 1e-5, type=float, help='Learning rate end')
-    parser.add_argument('--curve_epochs', default = 20, type=int, help='Number of epochs')
+    parser.add_argument('--curve_lr_start', default = 1e-6, type=float, help='Learning rate start')
+    parser.add_argument('--curve_lr_end', default = 5e-2, type=float, help='Learning rate end')
+    parser.add_argument('--curve_epochs', default = 200, type=int, help='Number of epochs')
     parser.add_argument('--curve_optimizer', default = "SGD", type=str, help='Optimizer to use for curve training', choices=["Adam", "SGD"])
-    parser.add_argument('--curve_scheduler', default = "linear", type=str, help='Optimizer to use for curve training', choices=["linear", "exponential", "none"])
+    parser.add_argument('--curve_scheduler', default = "diy", type=str, help='Optimizer to use for curve training', choices=["linear", "exponential", "diy", "none"])
 
     parser.add_argument('--plot_mesh', default = False, help='Plot loss landscape', type=eval, choices=[True, False])
-    parser.add_argument('--recalc_mesh', default = False, help='Recalculate loss landscape if already present in folder', type=eval, choices=[True, False])
-    parser.add_argument('--meshpoints', default = 10, type=int, help='Number of mesh points')
+    parser.add_argument('--recalc_mesh', default = True, help='Recalculate loss landscape if already present in folder', type=eval, choices=[True, False])
+    parser.add_argument('--meshpoints', default = 20, type=int, help='Number of mesh points')
 
     parser.add_argument('--plot_bezier', default = True, help='Plot bezier curve', type=eval, choices=[True, False])
-    parser.add_argument('--bezierpoints', default = 20, type=int, help='Number of bezier points')
+    parser.add_argument('--bezierpoints', default = 50, type=int, help='Number of bezier points')
 
     parser.add_argument('--eval_curve', default = False, help='Evaluate curve', type=eval, choices=[True, False])
     parser.add_argument('--curve_eval_samplesize', default = 20, type=int, help='Number of samples for evaluation')

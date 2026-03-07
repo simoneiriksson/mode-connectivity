@@ -24,16 +24,8 @@ def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=
     
     num_batches_train = len(train_loader)
     total_obs_train = len(train_loader.dataset)
-    if sgd_trace:
-        sgd_trace_models = []
     epoch=0
-    if sgd_trace: sgd_tracing_done = False
-    else: sgd_tracing_done = True
-    if target_sigma == None:
-        target_scale = 1
-    else:
-        target_scale = 1/ (2*target_sigma**2)
-    while (epoch < epochs) or (sgd_tracing_done==False):
+    while epoch < epochs:
         epoch += 1
         train_loss = 0
         current_correct_num = 0
@@ -97,6 +89,8 @@ def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=
         if optimizer.param_groups[0]['lr']<1e-10:
             logger_info("Stopping training because lr is too low")
             break
+
+    plots={}
     if plot:
         os.makedirs(plotpath, exist_ok=True)
         fig, ax = plt.subplots()
@@ -107,26 +101,23 @@ def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=
         ax.set_ylim(min(all_train_losses), torch.tensor(all_train_losses).quantile(.99).item())
         ax.legend()
         fig.savefig(f"{plotpath}/loss.png")
+        plots["loss"] = (fig, ax)
         plt.close()
 
-        # plt.plot(train_loss_batch_number, step_train_grad, label="step gradient")
-        # plt.plot(test_loss_batch_number, epoch_train_grad, label="epoch gradient")
-        # plt.ylim(0, torch.tensor(step_train_grad).quantile(.99).item())
-        # plt.savefig(f"{plotpath}/gradient.png")
-        # plt.close()
-
-        plt.plot(lrs)
+        fig, ax = plt.subplots()
+        ax.plot(lrs)
         plt.savefig(f"{plotpath}/learning_rate.png")
+        plots["learning_rate"] = (fig, ax)
         plt.close()
 
-        plt.plot(test_loss_batch_number, epoch_train_accuracy, label="train accuracy")
-        plt.plot(test_loss_batch_number, epoch_test_accuracy, label="test accuracy")
-        plt.legend()
+        fig, ax = plt.subplots()
+        ax.plot(test_loss_batch_number, epoch_train_accuracy, label="train accuracy")
+        ax.plot(test_loss_batch_number, epoch_test_accuracy, label="test accuracy")
+        ax.set_xlim(0, batch_number)
+        ax.legend()
         plt.savefig(f"{plotpath}/accuracy.png")
+        plots["accuracy"] = (fig, ax)
         plt.close()
 
-    if sgd_trace:
-        return model, sgd_trace_models, all_train_losses, lrs, epoch_train_losses, test_losses
-    else:
-        return model, all_train_losses, lrs, epoch_train_losses, test_losses
+    return model, all_train_losses, lrs, epoch_train_losses, test_losses, epoch_train_accuracy, plots
 
