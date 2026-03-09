@@ -78,9 +78,9 @@ How to run:
 - Full reproduction (optional)
 - Hardware/time caveats (brief, factual)
 --->
-Create a local environment and install the required packages in the requirements.txt file:
+Create a virtual environment and install the packages:
 ```
-pip install -r requirements.txt
+python -m pip install -e .
 ```
 Then the code can be run with the standard settings with
 ```

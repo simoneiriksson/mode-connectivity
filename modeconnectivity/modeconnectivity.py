@@ -20,6 +20,8 @@ from curve_plots import plot_Curve_losslandscape, affine_subspace, bezier_plot
 import torchmetrics
 from curve_eval import curve_eval
 import argparse
+from scheduler import make_scheduler
+
 
 
 def curve_fitting(**kargs):
@@ -30,7 +32,7 @@ def curve_fitting(**kargs):
         torch.manual_seed(seed)
     model_name = kargs.get("model", "MyNet")
     #root = "/Users/simondanieleiriksson/My Drive (punkeren@gmail.com)/DTU kurser/Specialkursus Michael"
-    root = "."
+    root = ".."
     if kargs.get("basefolder") is None:
         base_directory = f"{root}/experiments/curve_experiment_{dataset}_{model_name}"
     else:
@@ -99,7 +101,7 @@ def curve_fitting(**kargs):
             base_directory_i = f"{base_directory}_{i}"
             i += 1
         base_directory = base_directory_i
-    logging.info(f"base_directory is '{base_directory}'")
+    
     # create folder if not exists:
     os.makedirs(f"{datafolder}", exist_ok=True)
     os.makedirs(f"{base_directory}/models", exist_ok=True)
@@ -121,6 +123,7 @@ def curve_fitting(**kargs):
     logger.addHandler(handler_stream)
 
     logger.info('Start logging')
+    logger.info(f"base_directory is '{base_directory}'")
     logger.info("Parameters:")
     for key, item in kargs.items():
         logger.info(f"{key} = {item}")
@@ -174,7 +177,6 @@ def curve_fitting(**kargs):
         elif model_scheduler == "linear":
             scheduler_start = torch.optim.lr_scheduler.LinearLR(optimizer_start, start_factor=1, end_factor=model_lr_end/model_lr_start, total_iters=total_iter)
         elif model_scheduler == "diy":
-            from scheduler import make_scheduler
             scheduler_start = make_scheduler(optimizer_start, 
                                              train_num_steps=total_iter, 
                                              lr_start_warmup=model_lr_start.clone(), 
@@ -216,7 +218,6 @@ def curve_fitting(**kargs):
         elif model_scheduler == "linear":
             scheduler_end = torch.optim.lr_scheduler.LinearLR(optimizer_end, start_factor=1, end_factor=model_lr_end/model_lr_start, total_iters=total_iter)
         elif model_scheduler == "diy":
-            from scheduler import make_scheduler
             scheduler_end = make_scheduler(optimizer_end, 
                                              train_num_steps=total_iter, 
                                              lr_start_warmup=model_lr_start.clone(), 
@@ -268,7 +269,6 @@ def curve_fitting(**kargs):
                                                           end_factor=curve_lr_end/curve_lr_start, 
                                                           total_iters=total_iter)
         elif model_scheduler == "diy":
-            from scheduler import make_scheduler
             scheduler = make_scheduler(optimizer, 
                                              train_num_steps=total_iter, 
                                              lr_start_warmup=curve_lr_start.clone(), 

@@ -1,7 +1,7 @@
 import torchmetrics
 import torch
 import torch.nn as nn
-from models import Curve, CurveParameterization
+from curve_model import Curve, CurveParameterization
 from curve_eval import curve_eval
 from matplotlib import pyplot as plt
 from matplotlib import cm, ticker
