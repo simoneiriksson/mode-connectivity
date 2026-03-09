@@ -1,8 +1,7 @@
-matplotlib
-numpy
-torch
-torchmetrics
-torchvision
-torchviz
-scikit-learn
+matplotlib==3.10.8
+numpy==2.4.3
+torch==2.10.0
+torchmetrics==1.8.2
+torchvision==0.25.0
+torchviz==0.0.3
 jupyter

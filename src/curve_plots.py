@@ -113,12 +113,15 @@ def bezier_plot(curve, device, test_loader, plottype="semilog", N_bezierpoints =
                                                                     logger_info=logger_info, eval_straight_line=False, 
                                                                     verbose=verbose, metrics_dict=metrics_dict,
                                                                     ts=ts)
+        eval_results = {"curve_perpoint_score_dict": curve_perpoint_measurement_dict, 
+                        "ts": ts, "curve_ensemble_score_dict": curve_ensemble_measurement_dict}
         if plot_linear:
             line_perpoint_measurement_dict, _, line_ensemble_measurement_dict = curve_eval(curve,  
                                                                     test_loader=test_loader, device=device, 
                                                                     logger_info=logger_info, eval_straight_line=True, 
                                                                     verbose=verbose, metrics_dict=metrics_dict,
                                                                     ts=ts)
+            eval_results["line_perpoint_score_dict"] = line_perpoint_measurement_dict
     else:
         curve_perpoint_measurement_dict = eval_results["curve_perpoint_score_dict"]
         line_perpoint_measurement_dict = eval_results.get("line_perpoint_score_dict")

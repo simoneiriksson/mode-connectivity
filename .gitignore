@@ -182,4 +182,5 @@ cython_debug/
 
 # data folder
 data/
-experiments/
+#experiments/
+.DS_Store

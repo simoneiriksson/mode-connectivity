@@ -6,7 +6,8 @@ import torchmetrics
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
-from models import MyNet, Lenet5, tiny, Curve, CurveParameterization, MyNet_small, CIFAR10ConvNet
+from models import MyNet, Lenet5, tiny, MyNet_small, CIFAR10ConvNet
+from curve_model import Curve
 from train import train
 from torchviz import make_dot
 import numpy as np
@@ -318,8 +319,10 @@ def curve_fitting(**kargs):
         fig, axs, eval_results = bezier_plot(curve, device, test_loader=test_loader, plottype="linear", 
                                N_bezierpoints = bezierpoints,
                                logger_info=logger.info, plot_linear=False, metrics_dict=metrics_dict)
-        fig.savefig(f"{base_directory}/figures/metric_along_curve_linear.png")
+        fig.savefig(f"{base_directory}/figures/metric_along_curve.png")
         plt.close()
+
+        
 
     #if eval_curve:
     #    curve_eval(curve, samplesize=curve_eval_samplesize, test_loader=test_loader, device=device, logger_info=logger.info, metrics_dict=metrics_dict)
@@ -327,13 +330,13 @@ def curve_fitting(**kargs):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Mode connectivity')
     parser.add_argument('--basefolder', type=str, help='Folder to store results')
-    parser.add_argument('--createnewfolder', default=False, help='Create new folder if basefolder already exists', type=eval, choices=[True, False])
+    parser.add_argument('--createnewfolder', default=True, help='Create new folder if basefolder already exists', type=eval, choices=[True, False])
     parser.add_argument('--datafolder', type=str, help='Folder to store data')
     parser.add_argument('--dataset', default = "CIFAR10", type=str, help='Dataset to use', choices=["MNIST", "FashionMNIST", "CIFAR10"])
     parser.add_argument('--batchsize', default = 256, type=int, help='Batch size')
     parser.add_argument('--seed', type=int, help='Seed')
     parser.add_argument('--model', default = "CIFAR10ConvNet",  type=str, help='Model to use (MyNet/Lenet5/tiny/MyNet_small/CIFAR10ConvNet)', choices=["MyNet", "Lenet5", "tiny", "MyNet_small", "CIFAR10ConvNet"])
-    parser.add_argument('--retrain', default = False, help='Retrain models if already present in folder', type=eval, choices=[True, False])
+    parser.add_argument('--retrain', default = True, help='Retrain models if already present in folder', type=eval, choices=[True, False])
     parser.add_argument('--model_lr_start', default = 1e-4, type=float, help='Learning rate start')
     parser.add_argument('--model_lr_end', default = 2e-3, type=float, help='Learning rate end')
     parser.add_argument('--model_epochs', default = 100, type=int, help='Number of epochs')
@@ -341,14 +344,14 @@ if __name__ == "__main__":
     parser.add_argument('--model_optimizer', default = "Adam", type=str, help='Optimizer to use for model training', choices=["Adam", "SGD"])
     parser.add_argument('--model_scheduler', default = "diy", type=str, help='Optimizer to use for model training', choices=["linear", "exponential", "diy", "none"])
     
-    parser.add_argument('--retrain_curve', default = False, help='Retrain curve if already present in folder', type=eval, choices=[True, False])
+    parser.add_argument('--retrain_curve', default = True, help='Retrain curve if already present in folder', type=eval, choices=[True, False])
     parser.add_argument('--curve_lr_start', default = 1e-6, type=float, help='Learning rate start')
     parser.add_argument('--curve_lr_end', default = 5e-2, type=float, help='Learning rate end')
     parser.add_argument('--curve_epochs', default = 200, type=int, help='Number of epochs')
     parser.add_argument('--curve_optimizer', default = "SGD", type=str, help='Optimizer to use for curve training', choices=["Adam", "SGD"])
     parser.add_argument('--curve_scheduler', default = "diy", type=str, help='Optimizer to use for curve training', choices=["linear", "exponential", "diy", "none"])
 
-    parser.add_argument('--plot_mesh', default = False, help='Plot loss landscape', type=eval, choices=[True, False])
+    parser.add_argument('--plot_mesh', default = True, help='Plot loss landscape', type=eval, choices=[True, False])
     parser.add_argument('--recalc_mesh', default = True, help='Recalculate loss landscape if already present in folder', type=eval, choices=[True, False])
     parser.add_argument('--meshpoints', default = 20, type=int, help='Number of mesh points')
 
