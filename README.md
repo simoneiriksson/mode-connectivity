@@ -41,9 +41,7 @@ $$
 where $\mathcal L$ is the loss at a single model instance.
 
 The loss is minimized by first sampling $t\sim U(0,1)$ and then generating the model $\phi_{\theta}(t)$ in terms of the tuple $(t, \theta, w_1, w_2)$ by using Pytorch' reparametrization functionality. Then the gradient 
-$
-\nabla_\theta\mathcal L(\phi_{\theta}(t))
-$ can be calculated and finally a gradient step can be taken.
+$\nabla_\theta\mathcal L(\phi_{\theta}(t))$ can be calculated and finally a gradient step can be taken.
 
 
 ## Results
