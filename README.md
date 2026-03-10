@@ -17,6 +17,14 @@ Assume that we have a class of models $\mathcal M$, parametrized by parameters $
 
 In the paper, the path is parametrized as a chain of two straight lines that both connect to a third parameter set $\theta$:
 
+$$
+\phi_{\theta}(t)=
+\begin{cases}
+2\left(t\theta + (0.5 - t)w_1\right), & 0 \le t \le 0.5 \\
+2\left((t - 0.5)w_2 + (1 - t)\theta\right), & 0.5 \le t \le 1
+\end{cases}
+$$
+
 $
 \phi_{\theta}(t) = \left\{\begin{array}{ll}
 2\left(t\theta + (0.5 - t){w}_{1}\right), & 0 \leq t \leq 0.5 \\
