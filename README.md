@@ -16,20 +16,26 @@ Key idea (theory) in 1–2 screens:
 Assume that we have a class of models $\mathcal M$, parametrized by parameters $w \in \mathbb R^n$. Then the paper posits that two neural networks parametrised with $w_1$ and $w_2$, which both are local minimas of the loss function, can be connected by a simple path, which maintain the same minimal loss.
 
 In the paper, the path is parametrized as a chain of two straight lines that both connect to a third parameter set $\theta$:
-$$
+
+$
 \phi_{\theta}(t) = \left\{\begin{array}{ll}
 2\left(t\theta + (0.5 - t){w}_{1}\right), & 0 \leq t \leq 0.5 \\
 2\left((t - 0.5){w}_{2} + (1 - t)\theta\right), & 0.5 \leq t \leq 1.
 \end{array}\right.
-$$
+$
+
 Or as I have done in this implementation, the path is parameterized as a bezier curve connecting the start and end points:
-$$
+
+$
 \phi_{\theta}(t) = (1-t)^2w_1 + 2t(1-t)\theta + t^2w_2
-$$
+$
+
 Given that the two end-point models parametrized by $w_1$ and $w_2$ has been trained and reached local minimas, the curve-model parametrized by $\phi_{\theta}(t)$ is trained by minimizing the expectation over a uniform distribution on the curve:
-$$
+
+$
 \ell(\theta) = \underset{t\sim U(0,1)}{\mathbb E}[\mathcal L(\phi_{\theta}(t))]
-$$
+$
+
 where $\mathcal L$ is the loss at a single model instance.
 
 The loss is minimized by first sampling $t\sim U(0,1)$ and then generating the model $\phi_{\theta}(t)$ in terms of the tuple $(t, \theta, w_1, w_2)$ by using Pytorch' reparametrization functionality. Then the gradient 
@@ -84,6 +90,7 @@ python -m pip install -e .
 ```
 Then the code can be run with the standard settings with
 ```
+cd modeconnectivity
 python3 modeconnectivity.py
 ```
 ## Repo layout
