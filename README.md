@@ -58,7 +58,7 @@ Given that $\theta$ is now fixed, the performance along the curve can be investi
 
 ![Performance measures along the curve](experiments/curve_experiment_CIFAR10_CIFAR10ConvNet/figures/metric_along_curve.png)
 ### Ensemble prediction
-Finally, the question is: What if use parameter sets sampled along the curve as ensembles? In the normal setup for a classification task, the model would predict logits $\hat z = p_{w}(x)$, which would then be turned into probabilites for each class: 
+Finally, the question is: What if use parameter sets sampled along the curve as ensembles? In the normal setup for a classification task, the model would predict logits $\hat{z} = p_{w}(x)$, which would then be turned into probabilites for each class: 
 $$
 \hat y = \text{softmax}(\hat z).
 $$
