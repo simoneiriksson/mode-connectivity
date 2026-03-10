@@ -25,18 +25,12 @@ $$
 \end{cases}
 $$
 
-$
-\phi_{\theta}(t) = \left\{\begin{array}{ll}
-2\left(t\theta + (0.5 - t){w}_{1}\right), & 0 \leq t \leq 0.5 \\
-2\left((t - 0.5){w}_{2} + (1 - t)\theta\right), & 0.5 \leq t \leq 1.
-\end{array}\right.
-$
 
 Or as I have done in this implementation, the path is parameterized as a bezier curve connecting the start and end points:
 
-$
+$$
 \phi_{\theta}(t) = (1-t)^2w_1 + 2t(1-t)\theta + t^2w_2
-$
+$$
 
 Given that the two end-point models parametrized by $w_1$ and $w_2$ has been trained and reached local minimas, the curve-model parametrized by $\phi_{\theta}(t)$ is trained by minimizing the expectation over a uniform distribution on the curve:
 
