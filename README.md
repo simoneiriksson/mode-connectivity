@@ -59,13 +59,17 @@ Given that $\theta$ is now fixed, the performance along the curve can be investi
 ![Performance measures along the curve](experiments/curve_experiment_CIFAR10_CIFAR10ConvNet/figures/metric_along_curve.png)
 ### Ensemble prediction
 Finally, the question is: What if use parameter sets sampled along the curve as ensembles? In the normal setup for a classification task, the model would predict logits $\hat{z} = p_{w}(x)$, which would then be turned into probabilites for each class: 
+
 $$
-\hat y = \text{softmax}(\hat z).
+\hat{y} = \text{softmax}(\hat z).
 $$
+
 Instead, in ensemble prediction we use the sampled parameter sets and average over the output: 
+
 $$
 \hat z = \frac{1}{K}\sum_i^K p_{\phi_{\theta}(t)}(x)
 $$
+
 The idea is that the parameter samples $\phi_{\theta}(t)$ where $t\in U(0,1)$ should estimate the Bayesian posterior distribution roughly. Ok... very rough approximation, but still. 
 
 This should in turn result in a more robust model.
