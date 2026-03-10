@@ -34,9 +34,9 @@ $$
 
 Given that the two end-point models parametrized by $w_1$ and $w_2$ has been trained and reached local minimas, the curve-model parametrized by $\phi_{\theta}(t)$ is trained by minimizing the expectation over a uniform distribution on the curve:
 
-$
+$$
 \ell(\theta) = \underset{t\sim U(0,1)}{\mathbb E}[\mathcal L(\phi_{\theta}(t))]
-$
+$$
 
 where $\mathcal L$ is the loss at a single model instance.
 
