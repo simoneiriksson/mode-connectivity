@@ -345,8 +345,8 @@ if __name__ == "__main__":
     parser.add_argument('--model_scheduler', default = "diy", type=str, help='Optimizer to use for model training', choices=["linear", "exponential", "diy", "none"])
     
     parser.add_argument('--retrain_curve', default = True, help='Retrain curve if already present in folder', type=eval, choices=[True, False])
-    parser.add_argument('--curve_lr_start', default = 1e-6, type=float, help='Learning rate start')
-    parser.add_argument('--curve_lr_end', default = 5e-2, type=float, help='Learning rate end')
+    parser.add_argument('--curve_lr_start', default = 2e-2, type=float, help='Learning rate start')
+    parser.add_argument('--curve_lr_end', default = 1e-1, type=float, help='Learning rate end')
     parser.add_argument('--curve_epochs', default = 200, type=int, help='Number of epochs')
     parser.add_argument('--curve_optimizer', default = "SGD", type=str, help='Optimizer to use for curve training', choices=["Adam", "SGD"])
     parser.add_argument('--curve_scheduler', default = "diy", type=str, help='Optimizer to use for curve training', choices=["linear", "exponential", "diy", "none"])

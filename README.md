@@ -50,13 +50,13 @@ The following results are created using the standard setting for  `modeconnectiv
 The code first trains the start and end models, and next the $\theta$-model is trained. 
 ### Loss landscape
 The loss landscape, projected unto the plane suspended by the beziercurve is plottet below. Note that the landscape is squeezed such that $w_1$ is mapped to (1,0), $w_2$ is mapped to (0,1) and $\theta$ is mapped to (0,0). 
-![Loss landscape plot](experiments/curve_experiment_CIFAR10_CIFAR10ConvNet/figures/loss_landscape.png)
+![Loss landscape plot](experiments/results_notebook/figures/loss_landscape.png)
 
 It can indeed be seen that the curve lies in a valley as posited in the paper. 
 ### Performance metrics along the curve
 Given that $\theta$ is now fixed, the performance along the curve can be investigated. In the follwong plot, several performance measures are plotted as function of time $t$. First the Cross Entropy, which is also the loss used for training. Note that the Cross Entropy loss is a slighty bit higher in the inner part of the curve, than at the endpoints. That is reasonable, since the endpoints have been trained freely, whereas the curve is optimized along its full length. However, the difference between the inner parts of the curve and the endpoints is not very large compared to the difference between the endpoints. With regards to the accuracy, the models sampled along the curve are actually *better* than the ones at the endpoints.
 
-![Performance measures along the curve](experiments/curve_experiment_CIFAR10_CIFAR10ConvNet/figures/metric_along_curve.png)
+![Performance measures along the curve](experiments/results_notebook/figures/metric_along_curve.png)
 ### Ensemble prediction
 Finally, the question is: What if use parameter sets sampled along the curve as ensembles? In the normal setup for a classification task, the model would predict logits $\hat{z} = p_{w}(x)$, which would then be turned into probabilites for each class: 
 
@@ -72,7 +72,17 @@ $$
 
 The idea is that the parameter samples $\phi_{\theta}(t)$ where $t\in U(0,1)$ should estimate the Bayesian posterior distribution roughly. Ok... very rough approximation, but still. 
 
-This should in turn result in a more robust model.
+This results in a more robust model. Below is a table with the evaluation of the Cross Entropy loss, the Expected Calibration Error (ECE), the Accuracy and the Area Under the Reciever-Operator Curve (AUROC), for the start model, the end model and for the ensemble of models along the curve.
+
+As can be seen, all measurements except the ECE improve when using the ensemble of models. The ECE is probably higher since the ensemble inevitably gives more conservative predictions than the start and end models - in the sense that the ensemble is less sure about its predictions.  
+
+| Model       |   Cross Entropy |   Expected Calibration Error |   Accuracy |    AUROC |
+|:------------|----------------:|-----------------------------:|-----------:|---------:|
+| Start model |        0.607225 |                    0.0213717 |     0.7924 | 0.976199 |
+| End model   |        0.599861 |                    0.0238156 |     0.7952 | 0.976919 |
+| Ensemble    |        0.54475  |                    0.0420371 |     0.813  | 0.980854 |
+
+
 <!--- 
 Results:
 - Table/plot with the headline outcome.
@@ -112,16 +122,21 @@ mode-connectivity/
 │   ├── train/
 │   └── test/
 ├── experiments/
-│   └── curve_experiment_CIFAR10_CIFAR10ConvNet/
+│   ├── curve_experiment_CIFAR10_CIFAR10ConvNet/
+│   │   ├── curve_model/
+│   │   ├── end_model/
+│   │   ├── figures/
+│   │   ├── logs/
+│   │   ├── models/
+│   │   └── start_model/
+│   └── results_notebook/
 │       ├── curve_model/
 │       ├── end_model/
 │       ├── figures/
 │       ├── logs/
 │       ├── models/
 │       └── start_model/
-├── notebooks/
-├── scripts/
-└── src/
+└── modeconnectivity/
 	├── curve_eval.py
 	├── curve_plots.py
 	├── modeconnectivity.py
@@ -137,7 +152,7 @@ mode-connectivity/
 - `experiments/`: Saved outputs from runs (models, logs, plots, and artifacts).
 - `notebooks/`: Interactive notebooks for exploration and analysis.
 - `scripts/`: Utility scripts for running or automating experiments.
-- `src/`: Core source code for training, curve optimization, evaluation, and plotting.
+- `modeconnectivity/`: Core source code for training, curve optimization, evaluation, and plotting.
 	- `train.py`: Standard model training routines.
 	- `modeconnectivity.py`: Main script to train endpoint models and fit the curve model.
 	- `models.py`: Model architectures used in experiments.

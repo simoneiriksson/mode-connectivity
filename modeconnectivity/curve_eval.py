@@ -118,7 +118,7 @@ def curve_eval(curve, samplesize=20,  test_loader=None, device="cpu", logger_inf
                 curve.sample_model()
                 curve.eval()
                 curve.sampled_model.eval()
-            logger_info(f"Model {model_no+1} out of {samplesize}")
+            print(f"Model {model_no+1} out of {samplesize}", end="\r")
 
             for i, (test_x, test_y) in enumerate(test_loader):
                 test_x = test_x.to(device)
