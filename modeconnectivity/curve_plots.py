@@ -107,6 +107,84 @@ def CurveLossmesh(curve, N_points = 11, x_min = -.2, x_max = 1.2, test_loader=No
 
 def plot_Curve_losslandscape(curve, device, folder, test_loader, N_points=30, loss_fn=None, recalc_mesh=True, logger_info=None, N_bezierpoints=100, model_maker=None):
     """
+    Plot a 2D contour of the loss landscape with the Bezier curve overlaid.
+ 
+    Computes (or loads from disk) a grid of test losses in the affine subspace
+    spanned by the three models, renders it as a log-scaled filled contour plot,
+    and overlays the Bezier curve connecting w1 and w2 through theta. The three
+    model locations are also marked for reference.
+ 
+    Args:
+        curve (Curve): A fitted Curve object.
+        device (str): Device to run inference on.
+        folder (str): Directory used both to save the computed mesh and to load
+            a previously saved one when recalc_mesh is False.
+        test_loader (DataLoader): DataLoader for the evaluation set.
+        N_points (int): Grid resolution passed to CurveLossmesh; the full grid
+            is N_points x N_points.
+        loss_fn (callable): Loss function with signature (pred, target) -> scalar.
+        recalc_mesh (bool): If True, recompute the loss mesh and save it to
+            folder. If False, load a previously saved mesh from folder instead.
+        logger_info (callable | None): Logging function; defaults to print.
+        N_bezierpoints (int): Number of points used to draw the Bezier curve
+            overlay.
+        model_maker (callable | None): Factory for blank model instances.
+ 
+    Returns:
+        fig (Figure): The matplotlib figure.
+        ax (Axes): The axes containing the contour plot and curve overlay.
+    """
+
+    if logger_info == None: logger_info=print
+    logger_info("")
+    logger_info("begin loss landscape plot")
+    dataset_name = type(test_loader.dataset).__name__
+    model_name = type(curve.model_theta).__name__
+
+    if recalc_mesh:
+        loss_values_mesh, xs, ys = CurveLossmesh(curve, N_points=N_points, x_min = -0.5, x_max = 1.5, test_loader=test_loader, 
+                                            loss_fn=loss_fn, device=device, logger_info=logger_info, verbose=False, model_maker=model_maker)
+        torch.save((loss_values_mesh, xs, ys), f"{folder}/lossmesh_{type(curve.model_theta).__name__}_{dataset_name}.pth")
+    else:
+        loss_values_mesh, xs, ys = torch.load(f"{folder}/lossmesh_{type(curve.model_theta).__name__}_{dataset_name}.pth")
+    
+    fig, ax = plt.subplots(1, 1)
+    # plot contourplot
+    levels = torch.linspace(loss_values_mesh.min().log(), loss_values_mesh.max().log(), 20).exp()
+    # Use a log-scaled colormap to match exponential levels
+    norm = LogNorm(vmin=levels[0].item(), vmax=levels[-1].item())
+    cs = ax.contour(xs.to("cpu"), ys.to("cpu"), loss_values_mesh.to("cpu"), levels=levels, colors="black", linewidths=0.5)
+    cf = ax.contourf(xs.to("cpu"), ys.to("cpu"), loss_values_mesh.to("cpu"), levels=levels, norm=norm, cmap=cm.viridis)
+    # Colorbar with one tick per contour level
+    level_values = levels.detach().cpu().tolist()
+    cbar = fig.colorbar(cf, ax=ax, label='Test Loss', ticks=level_values)
+    # Fix ticks/labels to exactly match the contour levels
+    cbar.ax.yaxis.set_major_locator(ticker.FixedLocator(level_values))
+    cbar.ax.yaxis.set_major_formatter(ticker.FixedFormatter([f"{v:.3g}" for v in level_values]))
+    cbar.minorticks_off()
+
+    x1 = torch.tensor([1., 0.])
+    x2 = torch.tensor([0., 1.])
+    theta = torch.tensor([0., 0.])
+
+    
+    ts = torch.linspace(0, 1, N_bezierpoints)
+    inputs = curve.curve_fn(x1.unsqueeze(1), x2.unsqueeze(1), theta.unsqueeze(1), ts)
+
+    ax.plot(inputs[0,:], inputs[1,:], marker="x")
+    ax.scatter(x2[0],x2[1], label="model2")
+    ax.scatter(x1[0],x1[1], label="model1")
+    ax.scatter(0,0 , label="theta")
+    ax.legend()
+    logger_info("finished loss landscape plot")
+    logger_info("")
+    return fig, ax
+
+def bezier_plot(curve, device, test_loader, plottype="semilog", N_bezierpoints = 20, logger_info=print, 
+                verbose=False, plot_linear=True, metrics_dict={}, 
+                eval_results=None, classification_task=True, model_maker=None       
+                ):
+    """
     Plot each metric in metrics_dict as a function of position t along the curve.
  
     Evaluates the fitted Bézier curve at N_bezierpoints evenly-spaced t
@@ -142,59 +220,6 @@ def plot_Curve_losslandscape(curve, device, folder, test_loader, N_points=30, lo
             "curve_ensemble_score_dict", and optionally
             "line_perpoint_score_dict".
     """
-    
-    if logger_info == None: logger_info=print
-    logger_info("")
-    logger_info("begin loss landscape plot")
-    dataset_name = type(test_loader.dataset).__name__
-    model_name = type(curve.model_theta).__name__
-
-    if recalc_mesh:
-        loss_values_mesh, xs, ys = CurveLossmesh(curve, N_points=N_points, x_min = -0.5, x_max = 1.5, test_loader=test_loader, 
-                                            loss_fn=loss_fn, device=device, logger_info=logger_info, verbose=False, model_maker=model_maker)
-        torch.save((loss_values_mesh, xs, ys), f"{folder}/lossmesh_{type(curve.model_theta).__name__}_{dataset_name}.pth")
-    else:
-        loss_values_mesh, xs, ys = torch.load(f"{folder}/lossmesh_{type(curve.model_theta).__name__}_{dataset_name}.pth")
-    
-    fig, ax = plt.subplots(1, 1)
-    # plot contourplot
-
-    #cs = ax.contourf(xs.to("cpu"), ys.to("cpu"), loss_values_mesh.to("cpu"), locator=ticker.LogLocator(subs="auto"))
-    #cs = ax.contourf(xs.to("cpu"), ys.to("cpu"), loss_values_mesh.to("cpu"), norm=LogNorm(), levels=10000, cmap='viridis')
-    levels = torch.linspace(loss_values_mesh.min().log(), loss_values_mesh.max().log(), 20).exp()
-    # Use a log-scaled colormap to match exponential levels
-    norm = LogNorm(vmin=levels[0].item(), vmax=levels[-1].item())
-    cs = ax.contour(xs.to("cpu"), ys.to("cpu"), loss_values_mesh.to("cpu"), levels=levels, colors="black", linewidths=0.5)
-    cf = ax.contourf(xs.to("cpu"), ys.to("cpu"), loss_values_mesh.to("cpu"), levels=levels, norm=norm, cmap=cm.viridis)
-    # Colorbar with one tick per contour level
-    level_values = levels.detach().cpu().tolist()
-    cbar = fig.colorbar(cf, ax=ax, label='Test Loss', ticks=level_values)
-    # Fix ticks/labels to exactly match the contour levels
-    cbar.ax.yaxis.set_major_locator(ticker.FixedLocator(level_values))
-    cbar.ax.yaxis.set_major_formatter(ticker.FixedFormatter([f"{v:.3g}" for v in level_values]))
-    cbar.minorticks_off()
-
-    x1 = torch.tensor([1., 0.])
-    x2 = torch.tensor([0., 1.])
-    theta = torch.tensor([0., 0.])
-
-    
-    ts = torch.linspace(0, 1, N_bezierpoints)
-    inputs = curve.curve_fn(x1.unsqueeze(1), x2.unsqueeze(1), theta.unsqueeze(1), ts)
-
-    ax.plot(inputs[0,:], inputs[1,:], marker="x")
-    ax.scatter(x2[0],x2[1], label="model2")
-    ax.scatter(x1[0],x1[1], label="model1")
-    ax.scatter(0,0 , label="theta")
-    ax.legend()
-    logger_info("finished loss landscape plot")
-    logger_info("")
-    return fig, ax
-
-def bezier_plot(curve, device, test_loader, plottype="semilog", N_bezierpoints = 20, logger_info=print, 
-                verbose=False, plot_linear=True, metrics_dict={}, 
-                eval_results=None, classification_task=True, model_maker=None       
-                ):
     if classification_task:
         curve_eval = curve_eval_classification
     else:
