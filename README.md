@@ -45,7 +45,7 @@ $\nabla_\theta\mathcal L(\phi_{\theta}(t))$ can be calculated and finally a grad
 
 
 ## Results
-The following results are created using the standard setting for  `modeconnectivity.py` as described below. CIFAR10 data has been used for this particular experiment. The model used is a pretty standard convolutional neural network with 3 convolutional layers and two linear layers, ReLU activation and 50% dropout. See [models.py](modeconnectivity/models.py) for further details.
+The following results are created with `CIFAR_experiment.ipynb`, but can also be reproduced using the standard setting for `modeconnectivity.py` as described below. CIFAR10 data has been used for this particular experiment. The model used is a pretty standard convolutional neural network with 3 convolutional layers and two linear layers, ReLU activation and 50% dropout. See [models.py](modeconnectivity/models.py) for further details.
 
 The code first trains the start and end models, and next the $\theta$-model is trained. 
 ### Loss landscape
@@ -78,11 +78,9 @@ As can be seen, all measurements except the ECE improve when using the ensemble 
 
 | Model       |   Cross Entropy |   Expected Calibration Error |   Accuracy |    AUROC |
 |:------------|----------------:|-----------------------------:|-----------:|---------:|
-| Start model |        0.607225 |                    0.0213717 |     0.7924 | 0.976199 |
-| End model   |        0.599861 |                    0.0238156 |     0.7952 | 0.976919 |
-| Ensemble    |        0.54475  |                    0.0420371 |     0.813  | 0.980854 |
-
-
+| Start model |        0.587726 |                    0.0231762 |     0.8025 | 0.977849 |
+| End model   |        0.607342 |                    0.0216215 |     0.7918 | 0.976107 |
+| Ensemble    |        0.544668 |                    0.0373571 |     0.8158 | 0.98081  |
 <!--- 
 Results:
 - Table/plot with the headline outcome.
@@ -118,18 +116,8 @@ mode-connectivity/
 ├── LICENSE
 ├── README.md
 ├── requirements.txt
-├── data/
-│   ├── train/
-│   └── test/
 ├── experiments/
-│   ├── curve_experiment_CIFAR10_CIFAR10ConvNet/
-│   │   ├── curve_model/
-│   │   ├── end_model/
-│   │   ├── figures/
-│   │   ├── logs/
-│   │   ├── models/
-│   │   └── start_model/
-│   └── results_notebook/
+│   └── results_notebook_CIFAR/
 │       ├── curve_model/
 │       ├── end_model/
 │       ├── figures/
@@ -148,7 +136,6 @@ mode-connectivity/
 - `LICENSE`: License for the project.
 - `README.md`: Project overview, results, and usage instructions.
 - `requirements.txt`: Python dependencies.
-- `data/`: Local training and test datasets (MNIST, FashionMNIST, CIFAR-10).
 - `experiments/`: Saved outputs from runs (models, logs, plots, and artifacts).
 - `notebooks/`: Interactive notebooks for exploration and analysis.
 - `scripts/`: Utility scripts for running or automating experiments.

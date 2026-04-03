@@ -187,3 +187,4 @@ data/
 .vscode/
 .vscode/launch.json
 experiments/curve_experiment*
+experiments/results_notebook_function/
