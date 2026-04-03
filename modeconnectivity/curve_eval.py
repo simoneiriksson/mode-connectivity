@@ -1,7 +1,7 @@
 import torch
 import torchmetrics
 
-def curve_predict(curve, samplesize=20,  test_loader=None, device="cpu", logger_info=print, eval_straight_line=False, verbose=False, ts=None, model_maker=None, classification_task=True):
+def curve_predict(curve, samplesize=None,  test_loader=None, device="cpu", logger_info=print, eval_straight_line=False, verbose=False, ts=None, model_maker=None, classification_task=True):
     logger_info("")
     logger_info("begin evaluation of curve")
     N_obs = len(test_loader.dataset)
@@ -13,7 +13,6 @@ def curve_predict(curve, samplesize=20,  test_loader=None, device="cpu", logger_
     else:
         N_classes = 1
         true_y = torch.zeros((N_obs, 1), device=device)
-    #ts = torch.cat([torch.tensor([0.0]), torch.rand(samplesize-2), torch.tensor([1.0])]).to(device) # sample  t's, and concatenate startmodel and endmodel
     if ts is None:
         ts = torch.linspace(0, 1, samplesize, device=device)
     else:
@@ -50,12 +49,7 @@ def curve_predict(curve, samplesize=20,  test_loader=None, device="cpu", logger_
                     test_pred = line_model(test_x).detach().clone()
                 else:
                     test_pred = curve.sampled_model(test_x).detach().clone()
-                    # print(f"Model {model_no+1} out of {samplesize}, batch {i+1} out of {len(test_loader)}", end="\r")
-                    # print(f"{test_pred.shape = }")
-                    # print(f"{test_y.shape = }")
-                    # print(f"{all_predictions[i * test_loader.batch_size: i * test_loader.batch_size + test_pred.shape[0], model_no,:].shape = }")
                 all_predictions[i * test_loader.batch_size: i * test_loader.batch_size + test_pred.shape[0], model_no,:] = test_pred
-                #del test_pred  # Free memory
                 if model_no == 0:
                     true_y[i * test_loader.batch_size: i * test_loader.batch_size + test_y.shape[0]] = test_y
     return all_predictions, true_y, ts
@@ -64,7 +58,13 @@ def curve_eval_regression(curve,  test_loader=None, device="cpu", logger_info=pr
                           eval_straight_line=False, verbose=False, metrics_dict={}, 
                           ts=None, model_maker=None, target_sigma=1.0):
     
-    all_predictions, true_y, _ = curve_predict(curve, ts, test_loader, device, logger_info, eval_straight_line, verbose, ts, model_maker, classification_task=False)
+    all_predictions, true_y, _ = curve_predict(curve=curve, 
+                                               test_loader=test_loader, 
+                                               device=device, 
+                                               logger_info=logger_info, 
+                                               eval_straight_line=eval_straight_line, 
+                                               verbose=verbose, ts=ts, 
+                                               model_maker=model_maker, classification_task=False)
     samplesize = all_predictions.shape[1]
     ensemble_predictions = all_predictions[:, :, :] 
     start_pred = all_predictions[:, 0, 0]
@@ -98,7 +98,13 @@ def curve_eval_regression(curve,  test_loader=None, device="cpu", logger_info=pr
 
 
 def curve_eval_classification(curve, test_loader=None, device="cpu", logger_info=print, eval_straight_line=False, verbose=False, metrics_dict={}, ts=None, model_maker=None):
-    all_predictions, true_y, _ = curve_predict(curve, ts, test_loader, device, logger_info, eval_straight_line, verbose, ts, model_maker, classification_task=True)
+    all_predictions, true_y, _ = curve_predict(curve=curve, 
+                                               test_loader=test_loader, 
+                                               device=device, 
+                                               logger_info=logger_info, 
+                                               eval_straight_line=eval_straight_line, 
+                                               verbose=verbose, ts=ts, 
+                                               model_maker=model_maker, classification_task=True)
     samplesize = all_predictions.shape[1]
     ensemble_predictions = all_predictions[:, :, :] 
     mean_ensemble_pred_probs = ensemble_predictions.softmax(dim=-1).mean(dim=1)

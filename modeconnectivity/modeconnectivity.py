@@ -16,6 +16,28 @@ import torchmetrics
 import argparse
 from scheduler import make_diy_scheduler, build_scheduler, build_optimizer
 
+def curve_fn(param_start, param_end, param_theta, t):
+    """
+    Quadratic Bezier interpolation between two parameter tensors.
+
+    Evaluates the curve at position t in [0, 1]:
+
+        phi(t) = (1-t)^2 * w1  +  2t(1-t) * theta  +  t^2 * w2
+
+    where w1 = param_start, w2 = param_end, and theta = param_theta is
+    the trainable midpoint. At t=0 the output equals param_start exactly;
+    at t=1 it equals param_end exactly.
+
+    Args:
+        param_start (Tensor): Frozen parameters of the start model (w1).
+        param_end   (Tensor): Frozen parameters of the end model (w2).
+        param_theta (Tensor): Trainable midpoint parameters (theta).
+        t (float | Tensor):   Position along the curve, in [0, 1].
+
+    Returns:
+        Tensor: Interpolated parameter tensor of the same shape as the inputs.
+    """
+    return param_start * (1-t)**2 + param_end * t**2 + param_theta * 2*t*(1-t)
 
 
 def curve_fitting(**kargs):
@@ -188,9 +210,6 @@ def curve_fitting(**kargs):
     else:
         model_start = torch.load(f"{base_directory}/models/model_start_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device), weights_only=False)
         model_end = torch.load(f"{base_directory}/models/model_end_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device), weights_only=False)
-
-    def curve_fn(param_start, param_end, param_theta, t):
-        return param_start * (1-t)**2 + param_end * t**2 + param_theta * 2*t*(1-t)
 
     if retrain_curve:
         logger.info("Begin training of curve")

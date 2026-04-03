@@ -3,7 +3,12 @@ import torch.nn as nn
 import torch.nn.utils.parametrize
 
 class CurveParameterization(nn.Module):
+    """
+    A module that defines the curve parameterization for a single parameter, 
+    which can be used to reparametrize the parameters of the sampled model. 
+    """
     def __init__(self, curve_fn, t,  param_start, param_end, param_theta):
+        
         super(CurveParameterization, self).__init__()
         self.param_start = param_start
         self.param_end = param_end
@@ -12,6 +17,18 @@ class CurveParameterization(nn.Module):
         self.curve_fn = curve_fn
 
     def forward(self, x):
+        """
+        Evaluate the Bezier curve at self.t for a single parameter tensor.
+
+        This method is called automatically by PyTorch's parametrize machinery
+        during each forward pass of the sampled model. The input x is the
+        current raw parameter value (unused — the curve ignores it and computes
+        directly from the stored start, end, and theta tensors).
+
+        Returns:
+            Tensor: The interpolated parameter value phi(t) as defined by
+                curve_fn(param_start, param_end, param_theta, t).
+        """
         return self.curve_fn(self.param_start, self.param_end, self.param_theta, self.t)
 
 class Curve(nn.Module):
@@ -32,6 +49,14 @@ class Curve(nn.Module):
         self.logger_info = logger_info
 
     def initiate_theta(self):
+        """
+        Initialise theta as the midpoint between the start and end models.
+
+        Sets each parameter of model_theta to the arithmetic mean of the
+        corresponding parameters in model_start and model_end. This places
+        theta on the straight line between w1 and w2, which is a reasonable
+        starting point before curve training begins.
+        """
         for param1, param2, param3 in zip(self.model_start.parameters(), 
                                           self.model_end.parameters(), 
                                           self.model_theta.parameters()):
@@ -41,6 +66,29 @@ class Curve(nn.Module):
         self.t = torch.distributions.Uniform(0, 1).sample()
 
     def sample_model(self, t=None, verbose=False):
+        """
+        Build a sampled model at position t along the Bezier curve.
+
+        For each parameter in the network, registers a CurveParameterization
+        as a PyTorch parametrization (torch.nn.utils.parametrize). This means
+        that when the sampled model performs a forward pass, each parameter is
+        computed on-the-fly as the Bezier interpolation:
+
+            phi(t) = (1-t)^2 * w1 + 2t(1-t) * theta + t^2 * w2
+
+        where w1, w2 are the fixed start/end parameters and theta is the
+        trainable midpoint. Gradients flow through theta only — w1 and w2
+        are frozen.
+
+        The sampled_model is recreated from scratch on each call to discard
+        any parametrizations registered in a previous call.
+
+        Args:
+            t (float | Tensor | None): Position along the curve in [0, 1].
+                Defaults to self.t, which is set by sample_t().
+            verbose (bool): If True, logs each module and parameter as it is
+                parametrized. Useful for debugging new model architectures.
+        """
         if t == None:
             t = self.t
         param_dicts = []

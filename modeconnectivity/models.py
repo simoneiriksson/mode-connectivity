@@ -33,13 +33,11 @@ class MyNet_small(nn.Module):
         self.conv_block = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            #nn.BatchNorm2d(32),
             nn.Dropout(p=dropout),
             nn.MaxPool2d(kernel_size=2, stride=2),
             
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            #nn.BatchNorm2d(64),
             nn.Dropout(p=dropout),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
@@ -47,7 +45,6 @@ class MyNet_small(nn.Module):
         self.linear_block = nn.Sequential(
             nn.Linear(64*7*7, 64),
             nn.ReLU(),
-            #nn.BatchNorm1d(64),
             nn.Dropout(p=dropout),
             nn.Linear(64, num_classes)
         )
@@ -107,21 +104,15 @@ class CIFAR10ConvNet(nn.Module):
 
         self.features = nn.Sequential(
             nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),
-            #nn.BatchNorm2d(32),
             nn.ReLU(),
-            #nn.Dropout(p=dropout),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
-            #nn.BatchNorm2d(64),
             nn.ReLU(),
-            #nn.Dropout(p=dropout),
             nn.MaxPool2d(kernel_size=2, stride=2),
             
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-            #nn.BatchNorm2d(128),
             nn.ReLU(),
-            #nn.Dropout(p=dropout),
             nn.AdaptiveAvgPool2d((4, 4))
         )
 

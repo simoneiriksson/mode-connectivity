@@ -8,7 +8,31 @@ from matplotlib import cm, ticker
 from matplotlib.colors import LogNorm
     
 def affine_subspace(curve: Curve) -> tuple:
-    # Create affine mapping that spans the subspace
+    """
+    Return an affine basis for the 2D subspace spanned by the three models.
+
+    Defines a coordinate system where:
+        - w1 (start model) maps to (1, 0)
+        - w2 (end model)   maps to (0, 1)
+        - theta (midpoint) maps to (0, 0)  [the origin / bias vector]
+
+    A point with 2D coordinates (a, b) in this space corresponds to the
+    parameter vector:  b = theta + a*(w1 - theta) + b*(w2 - theta)
+                        = A @ [a, b]^T + b_vec
+
+    This is used to project the high-dimensional loss landscape onto the
+    plane containing the three models, so the Bezier curve can be visualised
+    within it.
+
+    Args:
+        curve (Curve): A fitted Curve object with model_start, model_end,
+            and model_theta attributes.
+
+    Returns:
+        A (Tensor): Shape (P, 2), the column basis matrix where P is the
+            total number of parameters.
+        b (Tensor): Shape (P,), the bias vector (flattened theta parameters).
+    """
     b = torch.nn.utils.parameters_to_vector(curve.model_theta.parameters())
     w1 = torch.nn.utils.parameters_to_vector(curve.model_start.parameters())
     w2 = torch.nn.utils.parameters_to_vector(curve.model_end.parameters())
@@ -18,7 +42,6 @@ def affine_subspace(curve: Curve) -> tuple:
 def CurveLossmesh(curve, N_points = 11, x_min = -.2, x_max = 1.2, test_loader=None, loss_fn=None, device="cpu", logger_info=None, verbose=False, model_maker=None):
     if logger_info == None: logger_info=print
     logger_info("begin calculation of mesh for loss landscape plot")
-    #x_min = -.2; x_max = 1.2;N_points = 11
     A, b = affine_subspace(curve) # get affine subspace matrix and bias vector
     x1s = torch.linspace(x_min, x_max, N_points, device=device)
     y1s = torch.linspace(x_min, x_max, N_points, device=device)
