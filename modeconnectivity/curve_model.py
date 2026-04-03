@@ -33,6 +33,23 @@ class CurveParameterization(nn.Module):
 
 class Curve(nn.Module):
     def __init__(self, model_start, model_end, curve_fn, device="cpu", model_maker=None, logger_info=print):
+        """
+        Initialise a Bézier curve connecting two trained models in parameter space.
+
+        Stores the start and end models as frozen references, creates a trainable
+        midpoint model (model_theta) initialised to their average, and builds a
+        sampled_model that will be reparametrised on each forward pass via curve_fn.
+
+        Args:
+            model_start (nn.Module): The first trained endpoint model (w1). Frozen.
+            model_end (nn.Module): The second trained endpoint model (w2). Frozen.
+            curve_fn (callable): Interpolation function with signature
+                (param_start, param_end, param_theta, t) -> Tensor.
+            device (str): Device to place models on, e.g. "cpu" or "cuda".
+            model_maker (callable | None): Factory that returns a fresh model instance.
+                Defaults to type(model_start).
+            logger_info (callable): Logging function. Defaults to print.
+        """
         super(Curve, self).__init__()
         assert type(model_start) is type(model_end)
         self.model_start = model_start.requires_grad_(False)

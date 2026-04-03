@@ -1,8 +1,6 @@
 # Mode-connectivity in loss landscape
 This repo is my implementation of the mode-connectivity result in [1](#ref-1). The paper posits that any two local minima in the loss landscape can be connected by a curve through a valley in the loss landscape. Apart from the interesting fact that this is possible, the result can also be used for quick ensemble sampling for uncertainty quantification. 
 
-Except for the docstrings which are provided by Claude, then everything in this repo is handcrafted like in the good old days.
-
 ## Key idea
 Assume that we have a class of models $\mathcal M$, parametrized by parameters $w \in \mathbb R^n$. Then the paper posits that two neural networks parametrised with $w_1$ and $w_2$, which both are local minimas of the loss function, can be connected by a simple path, which maintain the same minimal loss.
 
@@ -45,7 +43,7 @@ The loss landscape, projected unto the plane suspended by the beziercurve is plo
 
 It can indeed be seen that the curve lies in a valley as posited in the paper. 
 ### Performance metrics along the curve
-Given that $\theta$ is now fixed, the performance along the curve can be investigated. In the follwong plot, several performance measures are plotted as function of time $t$. First the Cross Entropy, which is also the loss used for training. Note that the Cross Entropy loss is a slighty bit higher in the inner part of the curve, than at the endpoints. That is reasonable, since the endpoints have been trained freely, whereas the curve is optimized along its full length. However, the difference between the inner parts of the curve and the endpoints is not very large compared to the difference between the endpoints. With regards to the accuracy, the models sampled along the curve are actually *better* than the ones at the endpoints.
+Given that $\theta$ is now fixed, the performance along the curve can be investigated. In the following plot, several performance measures are plotted as function of time $t$. First the Cross Entropy, which is also the loss used for training. Note that the Cross Entropy loss is a slighty bit higher in the inner part of the curve, than at the endpoints. That is reasonable, since the endpoints have been trained freely, whereas the curve is optimized along its full length. However, the difference between the inner parts of the curve and the endpoints is not very large compared to the difference between the endpoints. With regards to the accuracy, the models sampled along the curve are actually *better* than the ones at the endpoints.
 
 ![Performance measures along the curve](experiments/results_notebook_CIFAR/figures/metric_along_curve.png)
 ### Ensemble prediction

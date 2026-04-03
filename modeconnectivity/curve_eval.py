@@ -37,7 +37,7 @@ def curve_predict(curve, samplesize=None,  test_loader=None, device="cpu", logge
     logger_info("")
     logger_info("begin evaluation of curve")
     N_obs = len(test_loader.dataset)
-    print(f"{N_obs = }")
+    logger_info(f"{N_obs = }")
     if classification_task:
         N_classes = len(test_loader.dataset.classes)
         #print(f"{N_classes = }")
@@ -72,7 +72,7 @@ def curve_predict(curve, samplesize=None,  test_loader=None, device="cpu", logge
                 curve.sample_model()
                 curve.eval()
                 curve.sampled_model.eval()
-            print(f"Model {model_no+1} out of {samplesize}", end="\r")
+            logger_info(f"Model {model_no+1} out of {samplesize}", end="\r")
 
             for i, (test_x, test_y) in enumerate(test_loader):
                 test_x = test_x.to(device)
@@ -133,8 +133,6 @@ def curve_eval_regression(curve,  test_loader=None, device="cpu", logger_info=pr
     start_pred = all_predictions[:, 0, 0]
     end_pred = all_predictions[:, samplesize-1, 0]
     mean_ensemble_pred = ensemble_predictions.mean(dim=1).squeeze()
-    #var_ensemble_pred = ensemble_predictions.var(dim=1).squeeze()
-    #std_ensemble_pred = ensemble_predictions.std(dim=1).squeeze()
     ensemble_measurement_dict = {"Start model": {}, "End model": {}, "Ensemble": {}}
     for metric_name, metric in metrics_dict.items():
         ensemble_measurement = metric(mean_ensemble_pred[:,None], true_y)
@@ -146,8 +144,6 @@ def curve_eval_regression(curve,  test_loader=None, device="cpu", logger_info=pr
         logger_info(f"{metric_name} start model: {start_measurement}")
         logger_info(f"{metric_name} end mode: {end_measurement}")
         logger_info(f"{metric_name} ensemble: {ensemble_measurement}")
-    #ensemble_measurement_dict["Ensemble"]["NLL"] = torch.distributions.Normal(mean_ensemble_pred, (var_ensemble_pred + target_sigma**2).sqrt()).log_prob(true_y).mean().item()
-    #logger_info(f"NLL ensemble: {ensemble_measurement_dict['Ensemble']['NLL']}")
 
     perpoint_score_dict = {}
     for metric_name, metric in metrics_dict.items():

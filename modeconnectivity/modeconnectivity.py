@@ -46,7 +46,6 @@ def curve_fitting(**kargs):
     if seed is not None:
         torch.manual_seed(seed)
     model_name = kargs.get("model", "MyNet")
-    #root = "/Users/simondanieleiriksson/My Drive (punkeren@gmail.com)/DTU kurser/Specialkursus Michael"
     root = "."
     if kargs.get("basefolder") is None:
         base_directory = f"{root}/experiments/curve_experiment_{dataset}_{model_name}"
@@ -241,7 +240,7 @@ def curve_fitting(**kargs):
         curve.model_theta = torch.load(f"{base_directory}/models/curve.model_theta_{MODEL.__name__}_{dataset}.pth", map_location=torch.device(device), weights_only=False)
         
     metrics_dict = {
-        "Cross Entropy": lambda pred_probs, target: torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean', label_smoothing=0.0)(pred_probs.log(), target),
+        "Cross Entropy": lambda pred_probs, target: torch.nn.CrossEntropyLoss()(pred_probs.log(), target),
         "Expected Calibration Error": torchmetrics.classification.MulticlassCalibrationError(num_classes=10, n_bins=25).to(device),
         "Accuracy": lambda pred_probs, target: torchmetrics.functional.classification.accuracy(preds=pred_probs, target=target, task="multiclass", num_classes=10).to(device),
         "AUROC": lambda pred_probs, target: torchmetrics.functional.classification.auroc(preds=pred_probs, target=target.to(torch.long), task="multiclass", num_classes=10).to(device)

@@ -14,11 +14,7 @@ def make_diy_scheduler(optimizer, train_num_steps, lr_start_warmup, lr, lr_warmu
         A PyTorch learning rate scheduler that implements the specified warmup and finetuning schedule.
     """
     lr_total_steps = train_num_steps
-    lr_start_warmup = lr_start_warmup  
     lr_const = lr 
-
-    lr_warmup_steps = lr_warmup_steps
-    lr_finetune_halftime = lr_finetune_halftime
     lr_finetune_steps = min(lr_total_steps, lr_finetune_steps)
     lr_const_steps = lr_total_steps - lr_warmup_steps - lr_finetune_steps
 
