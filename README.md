@@ -1,18 +1,9 @@
 # Mode-connectivity in loss landscape
-This repo is my implementation of the mode-connectivity result in [1](#ref-1). The paper posits that any two local minima in the loss landscape can be connected by a curve through a valley in the loss landscape. Apart from the curiousity of the fact that this is possible, the result can also be used for quick ensemble samling for uncertainty quantification. 
-<!--- 
-One-paragraph summary: 
-- What problem, what you contribute, what the key result is. 
---->
+This repo is my implementation of the mode-connectivity result in [1](#ref-1). The paper posits that any two local minima in the loss landscape can be connected by a curve through a valley in the loss landscape. Apart from the interesting fact that this is possible, the result can also be used for quick ensemble sampling for uncertainty quantification. 
+
+Except for the docstrings which are provided by Claude, then everything in this repo is handcrafted like in the good old days.
 
 ## Key idea
-<!--- 
-Key idea (theory) in 1–2 screens:
-- Definitions/assumptions (minimal).
-- Main result(s) as a theorem/claim + intuition.
-- A short “why it matters / when it fails” section.
-- One figure if you have it.
---->
 Assume that we have a class of models $\mathcal M$, parametrized by parameters $w \in \mathbb R^n$. Then the paper posits that two neural networks parametrised with $w_1$ and $w_2$, which both are local minimas of the loss function, can be connected by a simple path, which maintain the same minimal loss.
 
 In the paper, the path is parametrized as a chain of two straight lines that both connect to a third parameter set $\theta$:
@@ -81,21 +72,10 @@ As can be seen, all measurements except the ECE improve when using the ensemble 
 | Start model |        0.587726 |                    0.0231762 |     0.8025 | 0.977849 |
 | End model   |        0.607342 |                    0.0216215 |     0.7918 | 0.976107 |
 | Ensemble    |        0.544668 |                    0.0373571 |     0.8158 | 0.98081  |
-<!--- 
-Results:
-- Table/plot with the headline outcome.
-- Link to results/ artifacts.
---->
 
 
 ## How to run
-<!--- 
-How to run:
-- Installation
-- Minimal command to reproduce a quick run
-- Full reproduction (optional)
-- Hardware/time caveats (brief, factual)
---->
+
 Create a virtual environment and install the packages:
 ```
 python -m pip install -e .
@@ -106,10 +86,7 @@ cd modeconnectivity
 python3 modeconnectivity.py
 ```
 ## Repo layout
-<!--- 
-Repo layout
-- What’s in src/, evaluation/, etc.
---->
+
 
 ```
 mode-connectivity/
@@ -137,8 +114,6 @@ mode-connectivity/
 - `README.md`: Project overview, results, and usage instructions.
 - `requirements.txt`: Python dependencies.
 - `experiments/`: Saved outputs from runs (models, logs, plots, and artifacts).
-- `notebooks/`: Interactive notebooks for exploration and analysis.
-- `scripts/`: Utility scripts for running or automating experiments.
 - `modeconnectivity/`: Core source code for training, curve optimization, evaluation, and plotting.
 	- `train.py`: Standard model training routines.
 	- `modeconnectivity.py`: Main script to train endpoint models and fit the curve model.
@@ -147,10 +122,7 @@ mode-connectivity/
 	- `curve_eval.py`: Evaluation utilities for models along the curve.
 	- `curve_plots.py`: Plotting utilities for landscapes and curve metrics.
 
-<!--- 
-Citation / attribution
-- BibTeX or a short citation line if it maps to a paper/report.
---->
+
 
 ## References
 

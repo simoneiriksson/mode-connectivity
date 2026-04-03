@@ -2,6 +2,38 @@ import torch
 import torchmetrics
 
 def curve_predict(curve, samplesize=None,  test_loader=None, device="cpu", logger_info=print, eval_straight_line=False, verbose=False, ts=None, model_maker=None, classification_task=True):
+    """
+    Collect raw model predictions at each sampled point along the curve.
+ 
+    Iterates over a grid of t values in [0, 1], builds the corresponding
+    Bézier-interpolated model at each point, and runs it over the full test set.
+    Optionally evaluates the straight-line interpolation between w1 and
+    w2 instead of the Bézier curve, for comparison.
+ 
+    Args:
+        curve (Curve): A fitted Curve object.
+        samplesize (int | None): Number of evenly-spaced t values to sample.
+            Ignored if ts is provided explicitly.
+        test_loader (DataLoader): DataLoader for the evaluation set.
+        device (str): Device to run inference on.
+        logger_info (callable): Logging function.
+        eval_straight_line (bool): If True, evaluate the linear interpolation
+            (1-t)*w1 + t*w2 instead of the Bézier curve.
+        verbose (bool): Unused; reserved for future verbosity control.
+        ts (Tensor | None): Explicit 1-D tensor of t values. If provided,
+            samplesize is ignored.
+        model_maker (callable | None): Factory for creating blank model instances.
+            Defaults to type(curve.model_theta).
+        classification_task (bool): If True, true_y is stored as a 1-D integer
+            tensor of class indices. If False, as a (N, 1) float tensor.
+ 
+    Returns:
+        all_predictions (Tensor): Shape (N, S, C) — raw logits for each
+            observation, sample point, and output dimension.
+        true_y (Tensor): Shape (N,) or (N, 1) — ground-truth labels.
+        ts (Tensor): The t values that were evaluated.
+    """
+    
     logger_info("")
     logger_info("begin evaluation of curve")
     N_obs = len(test_loader.dataset)
@@ -57,7 +89,38 @@ def curve_predict(curve, samplesize=None,  test_loader=None, device="cpu", logge
 def curve_eval_regression(curve,  test_loader=None, device="cpu", logger_info=print, 
                           eval_straight_line=False, verbose=False, metrics_dict={}, 
                           ts=None, model_maker=None, target_sigma=1.0):
-    
+    """
+    Evaluate a fitted curve on a regression task.
+ 
+    Samples models along the curve and computes each metric in metrics_dict
+    both per sample point and for the ensemble (averaged predictions across
+    all points).
+ 
+    Args:
+        curve (Curve): A fitted Curve object.
+        test_loader (DataLoader): DataLoader for the evaluation set.
+        device (str): Device to run inference on.
+        logger_info (callable): Logging function.
+        eval_straight_line (bool): If True, evaluate linear interpolation
+            instead of the Bezier curve (passed through to curve_predict).
+        verbose (bool): Passed through to curve_predict.
+        metrics_dict (dict[str, callable]): Metrics to compute. Each callable
+            should have the signature (pred, target) -> scalar Tensor.
+        ts (Tensor | None): Explicit t values to evaluate at. If None,
+            a uniform grid of size samplesize is used.
+        model_maker (callable | None): Factory for blank model instances.
+        target_sigma (float): Reserved for future NLL computation; currently unused.
+ 
+    Returns:
+        perpoint_score_dict (dict[str, Tensor]): Per-t metric values,
+            each a 1-D Tensor of length S.
+        ts (Tensor): The t values that were evaluated.
+        ensemble_measurement_dict (dict): Nested dict with keys
+            "Start model", "End model", and "Ensemble", each
+            mapping metric names to scalar float values.
+        all_predictions (Tensor): Raw predictions of shape (N, S, 1).
+        true_y (Tensor): Ground-truth targets of shape (N, 1).
+    """
     all_predictions, true_y, _ = curve_predict(curve=curve, 
                                                test_loader=test_loader, 
                                                device=device, 
@@ -98,6 +161,36 @@ def curve_eval_regression(curve,  test_loader=None, device="cpu", logger_info=pr
 
 
 def curve_eval_classification(curve, test_loader=None, device="cpu", logger_info=print, eval_straight_line=False, verbose=False, metrics_dict={}, ts=None, model_maker=None):
+    """
+    Evaluate a fitted curve on a classification task.
+ 
+    Samples models along the curve, converts raw logits to probabilities via
+    softmax, and computes each metric in metrics_dict both per sample point
+    and for the ensemble (averaged softmax probabilities across all points).
+ 
+    Args:
+        curve (Curve): A fitted Curve object.
+        test_loader (DataLoader): DataLoader for the evaluation set.
+        device (str): Device to run inference on.
+        logger_info (callable): Logging function.
+        eval_straight_line (bool): If True, evaluate linear interpolation
+            instead of the Bézier curve (passed through to curve_predict).
+        verbose (bool): Passed through to curve_predict.
+        metrics_dict (dict[str, callable]): Metrics to compute. Each callable
+            should have the signature (pred_probs, target) -> scalar Tensor,
+            where pred_probs are softmax probabilities of shape (N, C).
+        ts (Tensor | None): Explicit t values to evaluate at. If None,
+            a uniform grid of size samplesize is used.
+        model_maker (callable | None): Factory for blank model instances.
+ 
+    Returns:
+        perpoint_score_dict (dict[str, Tensor]): Per-t metric values,
+            each a 1-D Tensor of length S.
+        ts (Tensor): The t values that were evaluated.
+        ensemble_measurement_dict (dict): Nested dict with keys
+            "Start model", "End model", and "Ensemble", each
+            mapping metric names to scalar float values.
+    """
     all_predictions, true_y, _ = curve_predict(curve=curve, 
                                                test_loader=test_loader, 
                                                device=device, 

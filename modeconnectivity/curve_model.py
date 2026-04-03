@@ -34,7 +34,7 @@ class CurveParameterization(nn.Module):
 class Curve(nn.Module):
     def __init__(self, model_start, model_end, curve_fn, device="cpu", model_maker=None, logger_info=print):
         super(Curve, self).__init__()
-        assert type(model_start) == type(model_end)
+        assert type(model_start) is type(model_end)
         self.model_start = model_start.requires_grad_(False)
         self.model_end = model_end.requires_grad_(False)
         self.model_maker = model_maker
@@ -89,7 +89,7 @@ class Curve(nn.Module):
             verbose (bool): If True, logs each module and parameter as it is
                 parametrized. Useful for debugging new model architectures.
         """
-        if t == None:
+        if t is None:
             t = self.t
         param_dicts = []
         self.sampled_model = self.model_maker().to(self.device) # overwrite the model, so as to delete previously made reparametrizations

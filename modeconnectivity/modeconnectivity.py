@@ -12,7 +12,6 @@ import sys
 from datetime import datetime
 from curve_plots import plot_Curve_losslandscape, bezier_plot
 import torchmetrics
-#from curve_eval import curve_eval_regression, curve_predict
 import argparse
 from scheduler import make_diy_scheduler, build_scheduler, build_optimizer
 
@@ -173,8 +172,8 @@ def curve_fitting(**kargs):
     if retrain:
         logger.info("Begin training of model_start")
         model_start = MODEL(**model_kargs)
-        total_iter = model_epochs*train_loader.__len__()
-        batches_per_epoch = train_loader.__len__()
+        total_iter = model_epochs*len(train_loader)
+        batches_per_epoch = len(train_loader)
         optimizer_start = build_optimizer(model_start, model_lr_start.clone(), model_optimizer)
         scheduler_start = build_scheduler(optimizer_start, total_iter, batches_per_epoch, model_lr_start.clone(), model_lr_end.clone(), model_scheduler)
  
@@ -213,10 +212,9 @@ def curve_fitting(**kargs):
 
     if retrain_curve:
         logger.info("Begin training of curve")
-        total_iter = curve_epochs*train_loader.__len__()
-        batches_per_epoch = train_loader.__len__()
+        total_iter = curve_epochs*len(train_loader)
+        batches_per_epoch = len(train_loader)
         curve = Curve(model_start=model_start, model_end=model_end, curve_fn=curve_fn, device=device)
-        gamma = ((curve_lr_end.log()-curve_lr_start.log())/(curve_epochs*train_loader.__len__())).exp()
 
         optimizer_curve = build_optimizer(curve.model_theta, curve_lr_start.clone(), curve_optimizer)
         scheduler_curve = build_scheduler(optimizer_curve, total_iter, batches_per_epoch, curve_lr_start.clone(), curve_lr_end.clone(), curve_scheduler)
@@ -261,10 +259,6 @@ def curve_fitting(**kargs):
         fig.savefig(f"{base_directory}/figures/metric_along_curve.png")
         plt.close()
 
-        
-
-    #if eval_curve:
-    #    curve_eval(curve, samplesize=curve_eval_samplesize, test_loader=test_loader, device=device, logger_info=logger.info, metrics_dict=metrics_dict)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Mode connectivity')

@@ -40,6 +40,34 @@ def affine_subspace(curve: Curve) -> tuple:
     return A, b
 
 def CurveLossmesh(curve, N_points = 11, x_min = -.2, x_max = 1.2, test_loader=None, loss_fn=None, device="cpu", logger_info=None, verbose=False, model_maker=None):
+    """
+    Compute a 2D grid of test losses in the affine subspace spanned by the three models.
+ 
+    Projects the loss landscape onto the plane defined by w1 (start), w2
+    (end), and theta (midpoint), using the coordinate system from
+    affine_subspace() where theta is the origin, w1 maps to (1, 0), and w2
+    maps to (0, 1). Each grid point is decoded back to a full parameter vector,
+    loaded into a model, and evaluated on the test set.
+ 
+    Args:
+        curve (Curve): A fitted Curve object.
+        N_points (int): Number of grid points along each axis; the full grid is
+            N_points × N_points.
+        x_min (float): Lower bound of the 2D grid on both axes.
+        x_max (float): Upper bound of the 2D grid on both axes.
+        test_loader (DataLoader): DataLoader for the evaluation set.
+        loss_fn (callable): Loss function with signature (pred, target) -> scalar.
+        device (str): Device to run inference on.
+        logger_info (callable | None): Logging function; defaults to print.
+        verbose (bool): If True, logs the loss at every grid point.
+        model_maker (callable | None): Factory for blank model instances.
+ 
+    Returns:
+        loss_values (Tensor): Shape (N_points, N_points) — test loss at each
+            grid point.
+        xs (Tensor): Shape (N_points, N_points) — x-coordinates of the grid.
+        ys (Tensor): Shape (N_points, N_points) — y-coordinates of the grid.
+    """
     if logger_info == None: logger_info=print
     logger_info("begin calculation of mesh for loss landscape plot")
     A, b = affine_subspace(curve) # get affine subspace matrix and bias vector
@@ -78,6 +106,43 @@ def CurveLossmesh(curve, N_points = 11, x_min = -.2, x_max = 1.2, test_loader=No
     return loss_values.reshape(N_points, N_points), xs, ys
 
 def plot_Curve_losslandscape(curve, device, folder, test_loader, N_points=30, loss_fn=None, recalc_mesh=True, logger_info=None, N_bezierpoints=100, model_maker=None):
+    """
+    Plot each metric in metrics_dict as a function of position t along the curve.
+ 
+    Evaluates the fitted Bézier curve at N_bezierpoints evenly-spaced t
+    values and produces one subplot per metric. Optionally overlays the straight-line
+    interpolation between w1 and w2 for comparison. Pre-computed evaluation
+    results can be passed in via eval_results to skip re-evaluation.
+ 
+    Args:
+        curve (Curve): A fitted Curve object.
+        device (str): Device to run inference on.
+        test_loader (DataLoader): DataLoader for the evaluation set.
+        plottype (str): "linear" for a standard y-axis; "semilog" for a
+            log-scaled y-axis.
+        N_bezierpoints (int): Number of t values to evaluate along the curve.
+        logger_info (callable): Logging function.
+        verbose (bool): Passed through to the underlying curve-eval function.
+        plot_linear (bool): If True, also evaluates and overlays the straight-line
+            interpolation on each subplot.
+        metrics_dict (dict[str, callable]): Metrics to plot; see
+            curve_eval_classification / curve_eval_regression for the
+            expected callable signature.
+        eval_results (dict | None): Pre-computed results from a previous call.
+            If provided, evaluation is skipped and these results are plotted directly.
+        classification_task (bool): If True, uses curve_eval_classification;
+            otherwise uses curve_eval_regression.
+        model_maker (callable | None): Factory for blank model instances.
+ 
+    Returns:
+        fig (Figure): The matplotlib figure containing all subplots.
+        axs (ndarray[Axes]): Array of axes, one per metric.
+        eval_results (dict): Evaluation results used for the plot, with keys
+            "curve_perpoint_score_dict", "ts",
+            "curve_ensemble_score_dict", and optionally
+            "line_perpoint_score_dict".
+    """
+    
     if logger_info == None: logger_info=print
     logger_info("")
     logger_info("begin loss landscape plot")

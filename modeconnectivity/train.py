@@ -4,10 +4,61 @@ import numpy as np
 import os
 
 def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=None, epochs=1, 
-          loss_fn=None, prior_sigma=None, target_sigma=None, sgd_trace=False, sgd_trace_every_n_step=100, num_sgd_trace=10, sgd_trace_lr=None, 
+          loss_fn=None, 
           device="cpu", logger_info=print,
           plot=False, plotpath=None, verbose = False, modeltype="regression", print_every_n_epoch=10):
-    
+    """
+    Train a model for a fixed number of epochs and optionally plot training diagnostics.
+ 
+    Supports two training modes via the `modeltype` argument:
+ 
+    - "regression" / default: standard training loop. Calls model.train()
+      and model.eval() as usual.
+    - "curve": mode-connectivity curve training. On each batch, samples a
+      random t ~ U(0, 1) and builds a Bézier-interpolated model via
+      model.sample_t() and model.sample_model(). Gradients flow only
+      through model.model_theta (the trainable midpoint); the start and end
+      models are frozen. During the test loop a fresh sample is drawn each batch,
+      so the reported test loss reflects the expected loss over the curve.
+ 
+    Training stops early if the learning rate drops below 1e-10.
+ 
+    Args:
+        model (nn.Module | Curve): The model to train. Pass a Curve instance
+            and set modeltype="curve" for curve training.
+        train_loader (DataLoader): DataLoader for the training set.
+        test_loader (DataLoader): DataLoader for the test/validation set.
+        optimizer (Optimizer): PyTorch optimizer. Must already be configured with
+            the correct parameters and initial learning rate.
+        scheduler (LRScheduler): Step-level learning rate scheduler (i.e.
+            scheduler.step() is called after every batch, not every epoch).
+        epochs (int): Maximum number of training epochs.
+        loss_fn (callable): Loss function with signature (pred, target) -> scalar.
+        device (str): Device string passed to .to(), e.g. "cpu", "cuda",
+            or "mps".
+        logger_info (callable): Logging function, e.g. logging.info or print.
+        plot (bool): If True, saves loss, learning-rate, and accuracy plots to disk.
+        plotpath (str | None): Directory in which to save plots. Created if it does
+            not exist. Required when plot=True.
+        verbose (bool): If True, logs a summary line every print_every_n_epoch
+            epochs.
+        modeltype (str): "curve" enables Bézier curve training; any other value
+            uses the standard training loop.
+        print_every_n_epoch (int): How often (in epochs) to emit a log line when
+            verbose=True.
+ 
+    Returns:
+        model: The trained model (same object as input, moved to device).
+        all_train_losses (list[float]): Per-batch training loss values.
+        lrs (list[float]): Per-batch learning rate values.
+        epoch_train_losses (list[float]): Mean training loss per epoch
+            (weighted by batch size).
+        test_losses (list[float]): Mean test loss per epoch.
+        epoch_train_accuracy (list[float]): Training accuracy per epoch.
+        plots (dict[str, tuple[Figure, Axes]]): If plot=True, a dict with keys
+            "loss", "learning_rate", and "accuracy", each mapping to
+            the corresponding (fig, ax) tuple. Empty dict if plot=False.
+    """
     test_losses = []
     epoch_train_losses = []
     all_train_losses = []
@@ -33,6 +84,8 @@ def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=
             this_batch_size = x.shape[0]
             batch_number += 1
             optimizer.zero_grad()
+            # For curve model, we need to sample a new point on the curve for each batch, 
+            # and set the model to train mode. For regular model, just set to train mode.
             if modeltype == "curve":
                 model.sample_t()
                 model.sample_model()
@@ -52,8 +105,8 @@ def train(model, train_loader=None, test_loader=None, optimizer=None, scheduler=
 
             lrs.append(optimizer.param_groups[0]['lr'].item())
             optimizer.step()
-            scheduler.step()
-            #if verbose: logger_info(f"epoch = {epoch}, \tbatch= {batch_number}, train loss: {train_loss:2.5f}, lr: {optimizer.param_groups[0]['lr']:4e}")
+            if scheduler is not None:
+                scheduler.step()
         train_accuracy = current_correct_num.item() / total_obs_train
         epoch_train_accuracy.append(train_accuracy)
         epoch_train_losses.append(train_loss)
