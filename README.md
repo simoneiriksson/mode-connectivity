@@ -100,8 +100,11 @@ mode-connectivity/
 │       ├── models/
 │       └── start_model/
 └── modeconnectivity/
+	├── CIFAR_experiment.ipynb
 	├── curve_eval.py
+	├── curve_model.py
 	├── curve_plots.py
+	├── function_experiment.ipynb
 	├── modeconnectivity.py
 	├── models.py
 	├── scheduler.py
@@ -113,12 +116,15 @@ mode-connectivity/
 - `requirements.txt`: Python dependencies.
 - `experiments/`: Saved outputs from runs (models, logs, plots, and artifacts).
 - `modeconnectivity/`: Core source code for training, curve optimization, evaluation, and plotting.
-	- `train.py`: Standard model training routines.
-	- `modeconnectivity.py`: Main script to train endpoint models and fit the curve model.
-	- `models.py`: Model architectures used in experiments.
-	- `scheduler.py`: Learning-rate scheduling logic.
+	- `CIFAR_experiment.ipynb`: Runs main experiment and makes plots for this readme.
+	- `curve_model.py`: The Curve class implements the parameter reparametrization.
 	- `curve_eval.py`: Evaluation utilities for models along the curve.
 	- `curve_plots.py`: Plotting utilities for landscapes and curve metrics.
+	- `function_experiment.ipynb`: Experiment showing that for small models, the result does not hold.
+	- `modeconnectivity.py`: Main script to train endpoint models and fit the curve model.
+	- `models.py`: Model architectures used in experiments.
+	- `scheduler.py`: Learning-rate scheduling logic and optimizer definition.
+	- `train.py`: Standard model training routines.
 
 
 
